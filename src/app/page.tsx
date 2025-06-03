@@ -1,101 +1,98 @@
-import Image from "next/image";
+"use client";
+
+import React from "react";
+import Link from "next/link";
+import { useAuth } from '../hooks/useAuth';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const { user, loading } = useAuth();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  if (loading) return <div>Chargement...</div>;
+
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <div className="container mx-auto py-8">
+        <h1 className="text-3xl font-bold text-center mb-8">
+          Système de Gestion de Stock
+        </h1>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {user && (
+            <>
+              <Link href="/dashboard" className="block">
+                <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                  <h2 className="text-xl font-bold mb-2">Tableau de Bord</h2>
+                  <p className="text-gray-600">
+                    Vue d'ensemble des stocks et des prédictions
+                  </p>
+                </div>
+              </Link>
+
+              <Link href="/stock" className="block">
+                <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                  <h2 className="text-xl font-bold mb-2">Gestion des Stocks</h2>
+                  <p className="text-gray-600">
+                    Gérer les produits et leurs quantités
+                  </p>
+                </div>
+              </Link>
+
+              <Link href="/importPrix" className="block">
+                <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                  <h2 className="text-xl font-bold mb-2">Import des Données</h2>
+                  <p className="text-gray-600">
+                    Importer des données depuis Excel
+                  </p>
+                </div>
+              </Link>
+
+              {user.role === 'admin' && (
+                <Link href="/admin" className="block">
+                  <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow">
+                    <h2 className="text-xl font-bold mb-2">Administration</h2>
+                    <p className="text-gray-600">
+                      Gérer les utilisateurs et les magasins
+                    </p>
+                  </div>
+                </Link>
+              )}
+            </>
+          )}
+
+          {!user && (
+            <div className="col-span-full text-center">
+              <p className="text-xl mb-6">
+                Bienvenue sur notre système de gestion de stock. Veuillez vous connecter pour accéder à toutes les fonctionnalités.
+              </p>
+              <div className="space-x-4">
+                <Link
+                  href="/login"
+                  className="inline-block bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  Se connecter
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-block bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition-colors"
+                >
+                  S'inscrire
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <div className="mt-12 bg-white rounded-lg shadow-lg p-6">
+          <h2 className="text-xl font-bold mb-4">Fonctionnalités Principales</h2>
+          <ul className="list-disc list-inside space-y-2 text-gray-600">
+            <li>Suivi en temps réel des niveaux de stock</li>
+            <li>Prédictions mathématiques des besoins futurs</li>
+            <li>Alertes automatiques pour les stocks critiques</li>
+            <li>Import/export de données via Excel</li>
+            <li>Gestion multi-magasins</li>
+          </ul>
+        </div>
+      </div>
+    </main>
   );
 }
