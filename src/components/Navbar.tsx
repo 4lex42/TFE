@@ -39,7 +39,7 @@ export default function Navbar() {
     <nav className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center">
-          <div className="text-2xl font-bold text-blue-600">Star Mobile</div>
+          <div className="text-2xl font-bold text-blue-600">Gestion Stock</div>
           <ul className="flex space-x-6 text-sm font-medium ml-10">
             <li>
               <Link href="/" className="text-gray-700 hover:text-blue-600">
@@ -57,8 +57,8 @@ export default function Navbar() {
               </Link>
             </li>
             <li>
-              <Link href="/entrees-stock" className="text-gray-700 hover:text-blue-600">
-                Entrées Stock
+              <Link href="/stock/ajout" className="text-gray-700 hover:text-blue-600">
+                Ajouter Stock
               </Link>
             </li>
             <li>

@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
 import AdminRoute from '../../components/AdminRoute';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { CategoryManagement } from '../../components/CategoryManagement';
 
 interface User {
   id: string;
@@ -19,21 +20,14 @@ interface Magasin {
   adresse: string;
 }
 
-interface Categorie {
-  id: string;
-  nom_categorie: string;
-}
-
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [magasins, setMagasins] = useState<Magasin[]>([]);
-  const [categories, setCategories] = useState<Categorie[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
-    type: 'user' | 'magasin' | 'categorie';
+    type: 'user' | 'magasin';
     id: string;
     name: string;
   }>({
@@ -52,12 +46,10 @@ export default function AdminPage() {
     location: 0,
     adresse: ''
   });
-  const [newCategorie, setNewCategorie] = useState('');
 
   useEffect(() => {
     fetchUsers();
     fetchMagasins();
-    fetchCategories();
   }, []);
 
   const fetchUsers = async () => {
@@ -85,20 +77,6 @@ export default function AdminPage() {
       setError('Erreur lors du chargement des magasins');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('categorie')
-        .select('*')
-        .order('nom_categorie');
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (err) {
-      setError('Erreur lors du chargement des catégories');
     }
   };
 
@@ -139,31 +117,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddCategorie = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCategorie.trim()) {
-      setError('Le nom de la catégorie ne peut pas être vide');
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('categorie')
-        .insert([{ nom_categorie: newCategorie.trim() }]);
-
-      if (error) throw error;
-
-      setSuccess('Catégorie ajoutée avec succès');
-      setNewCategorie('');
-      fetchCategories();
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Erreur lors de l\'ajout de la catégorie');
-    }
-  };
-
   const handleDeleteUser = async (userId: string) => {
     try {
       const response = await fetch(`/api/admin/users?id=${userId}`, {
@@ -194,32 +147,11 @@ export default function AdminPage() {
     }
   };
 
-  const handleDeleteCategorie = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('categorie')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setSuccess('Catégorie supprimée avec succès');
-      fetchCategories();
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError('Erreur lors de la suppression de la catégorie');
-    }
-  };
-
   const handleConfirmDelete = () => {
     if (deleteConfirmation.type === 'user') {
       handleDeleteUser(deleteConfirmation.id);
-    } else if (deleteConfirmation.type === 'magasin') {
-      handleDeleteMagasin(deleteConfirmation.id);
     } else {
-      handleDeleteCategorie(deleteConfirmation.id);
+      handleDeleteMagasin(deleteConfirmation.id);
     }
   };
 
@@ -236,19 +168,13 @@ export default function AdminPage() {
           </div>
         )}
 
-        {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            {success}
-          </div>
-        )}
-
         <ConfirmationModal
           isOpen={deleteConfirmation.isOpen}
           onClose={() => setDeleteConfirmation(prev => ({ ...prev, isOpen: false }))}
           onConfirm={handleConfirmDelete}
           title={`Confirmer la suppression`}
           message={`Êtes-vous sûr de vouloir supprimer ${
-            deleteConfirmation.type === 'user' ? 'l\'utilisateur' : deleteConfirmation.type === 'magasin' ? 'le magasin' : 'la catégorie'
+            deleteConfirmation.type === 'user' ? 'l\'utilisateur' : 'le magasin'
           } ${deleteConfirmation.name} ?`}
         />
 
@@ -337,7 +263,7 @@ export default function AdminPage() {
             
             <form onSubmit={handleAddMagasin} className="mb-6 space-y-4">
               <div>
-                <label className="block mb-1">Numéro de magasin</label>
+                <label className="block mb-1">Location</label>
                 <input
                   type="number"
                   value={newMagasin.location}
@@ -354,12 +280,11 @@ export default function AdminPage() {
                   onChange={e => setNewMagasin({...newMagasin, adresse: e.target.value})}
                   className="w-full border p-2 rounded"
                   required
-                  placeholder="Rue, numéro, code postal, ville"
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
               >
                 Ajouter un magasin
               </button>
@@ -369,17 +294,17 @@ export default function AdminPage() {
               {magasins.map(magasin => (
                 <div key={magasin.id} className="p-4 border rounded flex justify-between items-center">
                   <div>
-                    <p className="font-semibold">Magasin #{magasin.location}</p>
-                    <p className="text-gray-600 text-sm">{magasin.adresse}</p>
+                    <p className="font-semibold">Location: {magasin.location}</p>
+                    <p className="text-sm text-gray-600">{magasin.adresse}</p>
                   </div>
                   <button
                     onClick={() => setDeleteConfirmation({
                       isOpen: true,
                       type: 'magasin',
                       id: magasin.id,
-                      name: `#${magasin.location}`
+                      name: `le magasin ${magasin.location}`
                     })}
-                    className="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600"
+                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
                   >
                     Supprimer
                   </button>
@@ -387,59 +312,13 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
+        </div>
 
-          {/* Gestion des catégories */}
+        {/* Gestion des catégories */}
+        <div className="mt-8">
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold mb-4">Gestion des Catégories</h2>
-            
-            <form onSubmit={handleAddCategorie} className="mb-6">
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  value={newCategorie}
-                  onChange={(e) => setNewCategorie(e.target.value)}
-                  placeholder="Nom de la nouvelle catégorie"
-                  className="flex-1 p-2 border rounded"
-                />
-                <button
-                  type="submit"
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                  Ajouter
-                </button>
-              </div>
-            </form>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50">
-                    <th className="px-4 py-2 text-left">Nom de la catégorie</th>
-                    <th className="px-4 py-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categories.map((categorie) => (
-                    <tr key={categorie.id} className="border-t">
-                      <td className="px-4 py-2">{categorie.nom_categorie}</td>
-                      <td className="px-4 py-2 text-right">
-                        <button
-                          onClick={() => setDeleteConfirmation({
-                            isOpen: true,
-                            type: 'categorie',
-                            id: categorie.id,
-                            name: categorie.nom_categorie
-                          })}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          Supprimer
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <CategoryManagement />
           </div>
         </div>
       </div>

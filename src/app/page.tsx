@@ -91,8 +91,8 @@ export default function Home() {
             <li>Import/export de données via Excel</li>
             <li>Gestion multi-magasins</li>
           </ul>
-        </div>
-      </div>
+    </div>
+  </div>
     </main>
   );
 }

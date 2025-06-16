@@ -51,13 +51,6 @@ export interface Database {
           nom_categorie: string;
         };
       };
-      produit_categorie: {
-        Row: {
-          id: string;
-          produit_id: string;
-          categorie_id: string;
-        };
-      };
       achat: {
         Row: {
           id: string;
