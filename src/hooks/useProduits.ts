@@ -8,7 +8,7 @@ export interface Produit {
   quantity_critique: number;
   prix: number;
   code: string;
-  photo: string | null;
+  photo?: string | null;
   description: string | null;
 }
 
