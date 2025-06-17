@@ -47,7 +47,7 @@ export default function Navbar() {
               </Link>
             </li> */}
             <li>
-              <Link href="/" className="text-gray-700 hover:text-blue-600">
+              <Link href="/Dashboard" className="text-gray-700 hover:text-blue-600">
                 Dashboard
               </Link>
             </li>

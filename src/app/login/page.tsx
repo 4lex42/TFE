@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     const result = await signIn(formData.email, formData.password);
     if (result.success) {
-      router.push('/');
+      router.push('/Dashboard');
     } else {
       setError(result.error as string);
     }
