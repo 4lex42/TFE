@@ -79,14 +79,14 @@ export const PredictionChart: React.FC<PredictionChartProps> = ({
           />
         </LineChart>
       </ResponsiveContainer>
-      <div className="mt-4 text-center">
+      {/* <div className="mt-4 text-center">
         <p className="text-lg font-semibold">
           Prédiction des ventes: {prediction.predictedSales} unités
         </p>
         <p className="text-sm text-gray-600">
           Niveau de confiance: {prediction.confidence}%
         </p>
-      </div>
+      </div> */}
     </div>
   );
 }; 
