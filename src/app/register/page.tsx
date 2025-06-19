@@ -29,7 +29,7 @@ export default function RegisterPage() {
 
     const result = await signUp(formData.email, formData.password, formData.name);
     if (result.success) {
-      setSuccess(result.message);
+      setSuccess(result.message ?? "Inscription réussie.");
       setFormData({
         email: '',
         password: '',
