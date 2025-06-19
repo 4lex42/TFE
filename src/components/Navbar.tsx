@@ -41,11 +41,11 @@ export default function Navbar() {
         <div className="flex items-center">
           <div className="text-2xl font-bold text-blue-600">Gestion Stock</div>
           <ul className="flex space-x-6 text-sm font-medium ml-10">
-            <li>
+            {/* <li>
               <Link href="/" className="text-gray-700 hover:text-blue-600">
                 Accueil
               </Link>
-            </li>
+            </li> */}
             <li>
               <Link href="/dashboard" className="text-gray-700 hover:text-blue-600">
                 Dashboard
@@ -66,11 +66,11 @@ export default function Navbar() {
                 Ventes
               </Link>
             </li>
-            <li>
+            {/* <li>
               <Link href="/importPrix" className="text-gray-700 hover:text-blue-600">
                 Import
               </Link>
-            </li>
+            </li> */}
             {userProfile?.role === 'admin' && (
               <li>
                 <Link href="/admin" className="text-gray-700 hover:text-blue-600">
