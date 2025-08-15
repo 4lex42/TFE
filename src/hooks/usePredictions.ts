@@ -14,17 +14,53 @@ export interface PredictionResult {
   confidence: number;
 }
 
-export const usePredictions = (productId: string) => {
+export const usePredictions = (productId?: string) => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPredictions = async () => {
     try {
+      let query = supabase
+        .from('predictions')
+        .select('*')
+        .order('date', { ascending: true });
+
+      // Si un productId est fourni, récupérer les prédictions liées à ce produit
+      if (productId) {
+        const { data: produit, error: produitError } = await supabase
+          .from('produit')
+          .select('predict_id')
+          .eq('id', productId)
+          .single();
+
+        if (produitError) throw produitError;
+        
+        if (produit?.predict_id) {
+          query = query.eq('id', produit.predict_id);
+        } else {
+          setPredictions([]);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      setPredictions(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllPredictions = async () => {
+    try {
       const { data, error } = await supabase
         .from('predictions')
         .select('*')
-        .eq('id', productId)
         .order('date', { ascending: true });
 
       if (error) throw error;
@@ -69,16 +105,66 @@ export const usePredictions = (productId: string) => {
     };
   };
 
-  const addPrediction = async (newPrediction: Omit<Prediction, 'id'>) => {
+  const addPrediction = async (newPrediction: Omit<Prediction, 'id'>, productId?: string) => {
+    try {
+      // Créer la prédiction
+      const { data: prediction, error: predictionError } = await supabase
+        .from('predictions')
+        .insert([newPrediction])
+        .select()
+        .single();
+
+      if (predictionError) throw predictionError;
+
+      // Si un productId est fourni, lier la prédiction au produit
+      if (productId && prediction) {
+        const { error: updateError } = await supabase
+          .from('produit')
+          .update({ predict_id: prediction.id })
+          .eq('id', productId);
+
+        if (updateError) throw updateError;
+      }
+
+      setPredictions([...predictions, prediction]);
+      return { success: true, data: prediction };
+    } catch (err) {
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Une erreur est survenue' 
+      };
+    }
+  };
+
+  const updatePrediction = async (id: string, updates: Partial<Prediction>) => {
     try {
       const { data, error } = await supabase
         .from('predictions')
-        .insert([newPrediction])
+        .update(updates)
+        .eq('id', id)
         .select();
 
       if (error) throw error;
-      setPredictions([...predictions, ...(data || [])]);
+      setPredictions(predictions.map(p => p.id === id ? { ...p, ...updates } : p));
       return { success: true, data };
+    } catch (err) {
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Une erreur est survenue' 
+      };
+    }
+  };
+
+  const deletePrediction = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('predictions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setPredictions(predictions.filter(p => p.id !== id));
+      return { success: true };
     } catch (err) {
       return { 
         success: false, 
@@ -91,8 +177,28 @@ export const usePredictions = (productId: string) => {
     return calculatePrediction(predictions);
   };
 
+  const getPredictionsByDateRange = async (startDate: string, endDate: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('predictions')
+        .select('*')
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Une erreur est survenue');
+    }
+  };
+
   useEffect(() => {
-    fetchPredictions();
+    if (productId) {
+      fetchPredictions();
+    } else {
+      fetchAllPredictions();
+    }
   }, [productId]);
 
   return {
@@ -100,7 +206,10 @@ export const usePredictions = (productId: string) => {
     loading,
     error,
     addPrediction,
+    updatePrediction,
+    deletePrediction,
     getPredictionForNextPeriod,
-    refreshPredictions: fetchPredictions
+    getPredictionsByDateRange,
+    refreshPredictions: productId ? fetchPredictions : fetchAllPredictions
   };
 }; 

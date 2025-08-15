@@ -1,22 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useProduits, Produit } from '../hooks/useProduits';
+import { useCategories, Categorie } from '../hooks/useCategories';
 import { usePredictions } from '../hooks/usePredictions';
 import { PredictionChart } from './PredictionChart';
+import { ImageUpload } from './ImageUpload';
 
 export const ProductManagement: React.FC = () => {
-  const { produits, loading, error, addProduit, updateProduit, deleteProduit } = useProduits();
+  const { produits, loading, error, addProduit, updateProduit, deleteProduit, addCategorieToProduit, removeCategorieFromProduit } = useProduits();
+  const { categories, loading: categoriesLoading } = useCategories();
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Produit | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
     nom: '',
     quantity: 0,
     quantity_critique: 0,
     prix: 0,
     code: '',
-    description: ''
+    description: '',
+    photo: ''
   });
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [categoryFilterIds, setCategoryFilterIds] = useState<string[]>([]);
+  const [categoryFilterSearch, setCategoryFilterSearch] = useState('');
+  const [showCategoryFilters, setShowCategoryFilters] = useState(true);
 
   // Utiliser le hook de prédictions si un produit est sélectionné
   const {
@@ -25,10 +34,54 @@ export const ProductManagement: React.FC = () => {
     loading: predictionsLoading
   } = usePredictions(selectedProduct || '');
 
+  // Filtrer les produits en fonction du terme de recherche et des catégories sélectionnées
+  const filteredProduits = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+
+    return produits.filter(produit => {
+      const matchesSearch = !term
+        ? true
+        : (
+            produit.nom.toLowerCase().includes(term) ||
+            produit.code.toLowerCase().includes(term) ||
+            (produit.description && produit.description.toLowerCase().includes(term))
+          );
+
+      const matchesCategory = categoryFilterIds.length === 0
+        ? true
+        : ((produit.categories || []).some(cat => categoryFilterIds.includes(cat.id)));
+
+      return matchesSearch && matchesCategory;
+    });
+  }, [produits, searchTerm, categoryFilterIds]);
+
+  // Catégories affichées dans le filtre (recherche + tri: sélectionnées d'abord)
+  const displayedCategories = useMemo(() => {
+    const term = categoryFilterSearch.toLowerCase().trim();
+    const filtered = term
+      ? categories.filter(c => c.nom_categorie.toLowerCase().includes(term))
+      : categories;
+
+    return [...filtered].sort((a, b) => {
+      const aSel = categoryFilterIds.includes(a.id) ? 0 : 1;
+      const bSel = categoryFilterIds.includes(b.id) ? 0 : 1;
+      if (aSel !== bSel) return aSel - bSel;
+      return a.nom_categorie.localeCompare(b.nom_categorie);
+    });
+  }, [categories, categoryFilterIds, categoryFilterSearch]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = await addProduit(formData);
-    if (result.success) {
+    if (result.success && result.data) {
+      // Ajouter les catégories sélectionnées au produit
+      const produitId = result.data[0]?.id;
+      if (produitId && selectedCategories.length > 0) {
+        for (const categorieId of selectedCategories) {
+          await addCategorieToProduit(produitId, categorieId);
+        }
+      }
+      
       setShowAddForm(false);
       setFormData({
         nom: '',
@@ -36,8 +89,10 @@ export const ProductManagement: React.FC = () => {
         quantity_critique: 0,
         prix: 0,
         code: '',
-        description: ''
+        description: '',
+        photo: ''
       });
+      setSelectedCategories([]);
       setMessage({ type: 'success', text: 'Produit ajouté avec succès' });
     } else {
       setMessage({ type: 'error', text: result.error || 'Une erreur est survenue' });
@@ -54,7 +109,8 @@ export const ProductManagement: React.FC = () => {
       quantity_critique: editingProduct.quantity_critique,
       prix: editingProduct.prix,
       code: editingProduct.code,
-      description: editingProduct.description
+      description: editingProduct.description,
+      photo: editingProduct.photo
     });
 
     if (result.success) {
@@ -82,119 +138,417 @@ export const ProductManagement: React.FC = () => {
     }));
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
+  const handleImageUpload = (imageUrl: string) => {
+    setFormData(prev => ({
+      ...prev,
+      photo: imageUrl
+    }));
+  };
 
-    const result = await deleteProduit(id);
-    if (result.success) {
-      setMessage({ type: 'success', text: 'Produit supprimé avec succès' });
+  const handleImageRemove = () => {
+    setFormData(prev => ({
+      ...prev,
+      photo: ''
+    }));
+  };
+
+  const handleEditImageUpload = (imageUrl: string) => {
+    if (!editingProduct) return;
+    setEditingProduct(prev => ({
+      ...prev!,
+      photo: imageUrl
+    }));
+  };
+
+  const handleEditImageRemove = () => {
+    if (!editingProduct) return;
+    setEditingProduct(prev => ({
+      ...prev!,
+      photo: ''
+    }));
+  };
+
+  const handleCategoryToggle = (categorieId: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(categorieId) 
+        ? prev.filter(id => id !== categorieId)
+        : [...prev, categorieId]
+    );
+  };
+
+  const handleEditCategoryToggle = async (categorieId: string) => {
+    if (!editingProduct) return;
+
+    const isCurrentlySelected = editingProduct.categories?.some(cat => cat.id === categorieId);
+    
+    if (isCurrentlySelected) {
+      // Retirer la catégorie
+      const result = await removeCategorieFromProduit(editingProduct.id, categorieId);
+      if (result.success) {
+        setEditingProduct(prev => ({
+          ...prev!,
+          categories: prev!.categories?.filter(cat => cat.id !== categorieId) || []
+        }));
+      }
     } else {
-      setMessage({ type: 'error', text: result.error || 'Une erreur est survenue' });
+      // Ajouter la catégorie
+      const result = await addCategorieToProduit(editingProduct.id, categorieId);
+      if (result.success) {
+        const categorieToAdd = categories.find(cat => cat.id === categorieId);
+        if (categorieToAdd) {
+          setEditingProduct(prev => ({
+            ...prev!,
+            categories: [...(prev!.categories || []), categorieToAdd]
+          }));
+        }
+      }
     }
   };
 
-  if (loading) return <div>Chargement...</div>;
-  if (error) return <div>Erreur: {error}</div>;
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
+      const result = await deleteProduit(id);
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Produit supprimé avec succès' });
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Une erreur est survenue' });
+      }
+    }
+  };
+
+  const handleEdit = (produit: Produit) => {
+    setEditingProduct(produit);
+    setSelectedCategories(produit.categories?.map(cat => cat.id) || []);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProduct(null);
+    setSelectedCategories([]);
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm('');
+  };
+
+  const toggleCategoryFilter = (categorieId: string) => {
+    setCategoryFilterIds(prev => 
+      prev.includes(categorieId)
+        ? prev.filter(id => id !== categorieId)
+        : [...prev, categorieId]
+    );
+  };
+
+  const clearCategoryFilters = () => {
+    setCategoryFilterIds([]);
+    setCategoryFilterSearch('');
+  };
+
+  const selectAllDisplayedCategories = () => {
+    setCategoryFilterIds(prev => {
+      const displayedIds = displayedCategories.map(c => c.id);
+      const merged = new Set([...prev, ...displayedIds]);
+      return Array.from(merged);
+    });
+  };
+
+  if (loading) {
+    return <div className="text-center py-8">Chargement des produits...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-8 text-red-600">Erreur: {error}</div>;
+  }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto p-6">
       {message && (
         <div className={`mb-4 p-4 rounded ${
           message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
         }`}>
           {message.text}
+          <button
+            onClick={() => setMessage(null)}
+            className="float-right font-bold"
+          >
+            ×
+          </button>
         </div>
       )}
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gestion des Produits</h1>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Ajouter un Produit
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          >
+            Ajouter un Produit
+          </button>
+        </div>
+      </div>
+
+      {/* Barre de recherche */}
+      <div className="mb-6">
+        <div className="relative max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            placeholder="Rechercher par nom, code ou description..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {searchTerm && (
+            <button
+              onClick={clearSearch}
+              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+            >
+              <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+        
+        {/* Résultats de recherche */}
+        {searchTerm && (
+          <div className="mt-2 text-sm text-gray-600">
+            {filteredProduits.length === 0 ? (
+              <span>Aucun produit trouvé pour "{searchTerm}"</span>
+            ) : (
+              <span>{filteredProduits.length} produit{filteredProduits.length > 1 ? 's' : ''} trouvé{filteredProduits.length > 1 ? 's' : ''} pour "{searchTerm}"</span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Filtres par catégories */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-medium">Filtrer par catégories</span>
+          <button
+            onClick={() => setShowCategoryFilters(s => !s)}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            {showCategoryFilters ? 'Masquer' : 'Afficher'}
+          </button>
+        </div>
+
+        {showCategoryFilters && (
+          <div className="flex flex-col gap-3">
+            {/* Chips des catégories sélectionnées */}
+            {categoryFilterIds.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {categoryFilterIds
+                  .map(id => categories.find(c => c.id === id))
+                  .filter(Boolean)
+                  .map(cat => (
+                    <span key={(cat as Categorie).id} className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                      {(cat as Categorie).nom_categorie}
+                      <button
+                        onClick={() => toggleCategoryFilter((cat as Categorie).id)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Retirer"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+              </div>
+            )}
+
+            {/* Barre de recherche des catégories */}
+            <div className="relative max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Rechercher une catégorie..."
+                value={categoryFilterSearch}
+                onChange={(e) => setCategoryFilterSearch(e.target.value)}
+                className="block w-full pl-9 pr-3 py-1.5 border border-gray-300 rounded-md text-sm bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={selectAllDisplayedCategories}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1 rounded border"
+                disabled={displayedCategories.length === 0}
+              >
+                Tout sélectionner (affichées)
+              </button>
+              <button
+                onClick={clearCategoryFilters}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1 rounded border"
+                disabled={categoryFilterIds.length === 0 && categoryFilterSearch.trim() === ''}
+              >
+                Effacer les filtres
+              </button>
+              <span className="text-xs text-gray-600">
+                {categoryFilterIds.length > 0 ? `${categoryFilterIds.length} sélectionnée${categoryFilterIds.length > 1 ? 's' : ''}` : 'Aucune sélection'}
+              </span>
+            </div>
+
+            {categoriesLoading ? (
+              <div className="text-sm text-gray-500">Chargement des catégories...</div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-auto p-2 border rounded">
+                {displayedCategories.map((categorie) => (
+                  <label key={categorie.id} className="flex items-center space-x-2 cursor-pointer text-sm">
+                    <input
+                      type="checkbox"
+                      checked={categoryFilterIds.includes(categorie.id)}
+                      onChange={() => toggleCategoryFilter(categorie.id)}
+                      className="rounded"
+                    />
+                    <span className="truncate" title={categorie.nom_categorie}>{categorie.nom_categorie}</span>
+                  </label>
+                ))}
+                {displayedCategories.length === 0 && (
+                  <div className="col-span-full text-xs text-gray-500">Aucune catégorie trouvée</div> 
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {showAddForm && (
         <div className="mb-6 p-4 border rounded">
           <h2 className="text-xl mb-4">Ajouter un nouveau produit</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block mb-1">Nom</label>
-              <input
-                type="text"
-                name="nom"
-                value={formData.nom}
-                onChange={handleInputChange}
-                className="w-full border p-2 rounded"
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block mb-1">Nom</label>
+                <input
+                  type="text"
+                  name="nom"
+                  value={formData.nom}
+                  onChange={handleInputChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Code</label>
+                <input
+                  type="text"
+                  name="code"
+                  value={formData.code}
+                  onChange={handleInputChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Quantité</label>
+                <input
+                  type="number"
+                  name="quantity"
+                  value={formData.quantity}
+                  onChange={handleInputChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Seuil Critique</label>
+                <input
+                  type="number"
+                  name="quantity_critique"
+                  value={formData.quantity_critique}
+                  onChange={handleInputChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Prix</label>
+                <input
+                  type="number"
+                  name="prix"
+                  value={formData.prix}
+                  onChange={handleInputChange}
+                  className="w-full border p-2 rounded"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block mb-1">Description</label>
+                <input
+                  type="text"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  className="w-full border p-2 rounded"
+                />
+              </div>
             </div>
+            
+            {/* Upload d'image */}
+            <ImageUpload
+              currentImageUrl={formData.photo}
+              onImageUpload={handleImageUpload}
+              onImageRemove={handleImageRemove}
+              productName={formData.nom || 'produit'}
+            />
+
+            {/* Sélection des catégories */}
             <div>
-              <label className="block mb-1">Quantité</label>
-              <input
-                type="number"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleInputChange}
-                className="w-full border p-2 rounded"
-                required
-              />
+              <label className="block mb-2 font-medium">Catégories</label>
+              {categoriesLoading ? (
+                <div className="text-sm text-gray-500">Chargement des catégories...</div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {categories.map((categorie) => (
+                    <label key={categorie.id} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(categorie.id)}
+                        onChange={() => handleCategoryToggle(categorie.id)}
+                        className="rounded"
+                      />
+                      <span className="text-sm">{categorie.nom_categorie}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
-              <label className="block mb-1">Seuil Critique</label>
-              <input
-                type="number"
-                name="quantity_critique"
-                value={formData.quantity_critique}
-                onChange={handleInputChange}
-                className="w-full border p-2 rounded"
-                required
-              />
-            </div>
-            <div>
-              <label className="block mb-1">Prix</label>
-              <input
-                type="number"
-                name="prix"
-                value={formData.prix}
-                onChange={handleInputChange}
-                className="w-full border p-2 rounded"
-                required
-              />
-            </div>
-            <div>
-              <label className="block mb-1">Code</label>
-              <input
-                type="text"
-                name="code"
-                value={formData.code}
-                onChange={handleInputChange}
-                className="w-full border p-2 rounded"
-                required
-              />
-            </div>
-            <div>
-              <label className="block mb-1">Description</label>
-              <input
-                type="text"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                className="w-full border p-2 rounded"
-              />
-            </div>
+
             <div className="flex gap-2">
               <button
                 type="submit"
                 className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
               >
-                Enregistrer
+                Ajouter le Produit
               </button>
               <button
                 type="button"
-                onClick={() => setShowAddForm(false)}
+                onClick={() => {
+                  setShowAddForm(false);
+                  setFormData({
+                    nom: '',
+                    quantity: 0,
+                    quantity_critique: 0,
+                    prix: 0,
+                    code: '',
+                    description: '',
+                    photo: ''
+                  });
+                  setSelectedCategories([]);
+                }}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
                 Annuler
@@ -204,135 +558,254 @@ export const ProductManagement: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {produits.map((produit) => (
-          <div
-            key={produit.id}
-            className={`p-4 border rounded ${
-              produit.quantity <= produit.quantity_critique ? 'border-red-500' : ''
-            }`}
-          >
+      {/* En-tête du tableau */}
+      <div className="bg-gray-100 p-4 rounded-t border-b">
+        <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
+          <div className="col-span-2">Image</div>
+          <div className="col-span-2">Nom</div>
+          <div className="col-span-1">Code</div>
+          <div className="col-span-1">Stock</div>
+          <div className="col-span-1">Seuil</div>
+          <div className="col-span-1">Prix</div>
+          <div className="col-span-2">Description</div>
+          <div className="col-span-2">Actions</div>
+        </div>
+      </div>
+
+      {/* Liste des produits */}
+      <div className="space-y-1">
+        {filteredProduits.map((produit) => (
+          <div key={produit.id} className="border rounded p-4">
             {editingProduct?.id === produit.id ? (
               <form onSubmit={handleEditSubmit} className="space-y-4">
-                <div>
-                  <label className="block mb-1">Nom</label>
-                  <input
-                    type="text"
-                    name="nom"
-                    value={editingProduct.nom}
-                    onChange={handleEditInputChange}
-                    className="w-full border p-2 rounded"
-                    required
-                  />
+                <div className="grid grid-cols-12 gap-4">
+                  {/* Image */}
+                  <div className="col-span-2">
+                    <ImageUpload
+                      currentImageUrl={editingProduct.photo || ''}
+                      onImageUpload={handleEditImageUpload}
+                      onImageRemove={handleEditImageRemove}
+                      productName={editingProduct.nom}
+                      compact={true}
+                    />
+                  </div>
+                  
+                  {/* Nom */}
+                  <div className="col-span-2">
+                    <input
+                      type="text"
+                      name="nom"
+                      value={editingProduct.nom}
+                      onChange={handleEditInputChange}
+                      className="w-full border p-1 rounded text-sm"
+                      required
+                    />
+                  </div>
+                  
+                  {/* Code */}
+                  <div className="col-span-1">
+                    <input
+                      type="text"
+                      name="code"
+                      value={editingProduct.code}
+                      onChange={handleEditInputChange}
+                      className="w-full border p-1 rounded text-sm"
+                      required
+                    />
+                  </div>
+                  
+                  {/* Stock */}
+                  <div className="col-span-1">
+                    <input
+                      type="number"
+                      name="quantity"
+                      value={editingProduct.quantity}
+                      onChange={handleEditInputChange}
+                      className="w-full border p-1 rounded text-sm"
+                      required
+                    />
+                  </div>
+                  
+                  {/* Seuil critique */}
+                  <div className="col-span-1">
+                    <input
+                      type="number"
+                      name="quantity_critique"
+                      value={editingProduct.quantity_critique}
+                      onChange={handleEditInputChange}
+                      className="w-full border p-1 rounded text-sm"
+                      required
+                    />
+                  </div>
+                  
+                  {/* Prix */}
+                  <div className="col-span-1">
+                    <input
+                      type="number"
+                      name="prix"
+                      value={editingProduct.prix}
+                      onChange={handleEditInputChange}
+                      className="w-full border p-1 rounded text-sm"
+                      required
+                    />
+                  </div>
+                  
+                  {/* Description */}
+                  <div className="col-span-2">
+                    <input
+                      type="text"
+                      name="description"
+                      value={editingProduct.description || ''}
+                      onChange={handleEditInputChange}
+                      className="w-full border p-1 rounded text-sm"
+                    />
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="col-span-2 flex gap-2">
+                    <button
+                      type="submit"
+                      className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                    >
+                      💾
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block mb-1">Quantité</label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={editingProduct.quantity}
-                    onChange={handleEditInputChange}
-                    className="w-full border p-2 rounded"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Seuil Critique</label>
-                  <input
-                    type="number"
-                    name="quantity_critique"
-                    value={editingProduct.quantity_critique}
-                    onChange={handleEditInputChange}
-                    className="w-full border p-2 rounded"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Prix</label>
-                  <input
-                    type="number"
-                    name="prix"
-                    value={editingProduct.prix}
-                    onChange={handleEditInputChange}
-                    className="w-full border p-2 rounded"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Code</label>
-                  <input
-                    type="text"
-                    name="code"
-                    value={editingProduct.code}
-                    onChange={handleEditInputChange}
-                    className="w-full border p-2 rounded"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block mb-1">Description</label>
-                  <input
-                    type="text"
-                    name="description"
-                    value={editingProduct.description || ''}
-                    onChange={handleEditInputChange}
-                    className="w-full border p-2 rounded"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
-                  >
-                    Sauvegarder
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingProduct(null)}
-                    className="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600"
-                  >
-                    Annuler
-                  </button>
+
+                {/* Catégories en mode édition */}
+                <div className="mt-4">
+                  <label className="block mb-2 text-sm font-medium">Catégories</label>
+                  {categoriesLoading ? (
+                    <div className="text-xs text-gray-500">Chargement des catégories...</div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2">
+                      {categories.map((categorie) => (
+                        <label key={categorie.id} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editingProduct.categories?.some(cat => cat.id === categorie.id) || false}
+                            onChange={() => handleEditCategoryToggle(categorie.id)}
+                            className="rounded"
+                          />
+                          <span className="text-xs">{categorie.nom_categorie}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </form>
             ) : (
-              <>
-                <h3 className="text-lg font-semibold">{produit.nom}</h3>
-                <p>Code: {produit.code}</p>
-                <p>Quantité: {produit.quantity}</p>
-                <p>Seuil critique: {produit.quantity_critique}</p>
-                <p>Prix: {produit.prix}€</p>
-                {produit.description && <p>Description: {produit.description}</p>}
-                {produit.quantity <= produit.quantity_critique && (
-                  <p className="text-red-500">Stock critique !</p>
-                )}
-                <div className="mt-2 flex gap-2">
+              <div className="grid grid-cols-12 gap-4 h-full items-center">
+                {/* Image */}
+                <div className="col-span-2 flex items-center">
+                  {produit.photo ? (
+                    <img
+                      src={produit.photo}
+                      alt={produit.nom}
+                      className="w-8 h-8 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Nom */}
+                <div className="col-span-2 text-sm font-medium text-gray-900 truncate">
+                  {produit.nom}
+                </div>
+                
+                {/* Code */}
+                <div className="col-span-1 text-sm text-gray-600 truncate">
+                  {produit.code}
+                </div>
+                
+                {/* Stock */}
+                <div className={`col-span-1 text-sm font-medium ${
+                  produit.quantity <= produit.quantity_critique ? 'text-red-600' : 'text-green-600'
+                }`}>
+                  {produit.quantity}
+                </div>
+                
+                {/* Seuil critique */}
+                <div className="col-span-1 text-sm text-gray-600">
+                  {produit.quantity_critique}
+                </div>
+                
+                {/* Prix */}
+                <div className="col-span-1 text-sm font-medium text-gray-900">
+                  {produit.prix}€
+                </div>
+                
+                {/* Description */}
+                <div className="col-span-2 text-sm text-gray-600 truncate">
+                  {produit.description || 'Aucune description'}
+                </div>
+                
+                {/* Actions */}
+                <div className="col-span-2 flex gap-2">
                   <button
-                    onClick={() => setEditingProduct(produit)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                    onClick={() => handleEdit(produit)}
+                    className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                    title="Modifier"
                   >
-                    Modifier
+                    ✏️
                   </button>
                   <button
                     onClick={() => handleDelete(produit.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                    title="Supprimer"
                   >
-                    Supprimer
+                    🗑️
                   </button>
                 </div>
-              </>
+              </div>
+            )}
+
+            {/* Affichage des catégories en mode lecture */}
+            {editingProduct?.id !== produit.id && produit.categories && produit.categories.length > 0 && (
+              <div className="mt-2 pt-2 border-t">
+                <div className="flex flex-wrap gap-1">
+                  {produit.categories.map((categorie) => (
+                    <span
+                      key={categorie.id}
+                      className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                    >
+                      {categorie.nom_categorie}
+                    </span>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         ))}
       </div>
 
-      {selectedProduct && !predictionsLoading && (
-        <div className="mt-6">
-          <h2 className="text-xl mb-4">Prédictions pour {produits.find(p => p.id === selectedProduct)?.nom}</h2>
-          <PredictionChart
-            historicalData={predictions}
-            prediction={getPredictionForNextPeriod()}
-          />
+      {filteredProduits.length === 0 && !loading && (
+        <div className="text-center py-8 text-gray-500">
+          {searchTerm || categoryFilterIds.length > 0 ? 'Aucun produit trouvé pour vos filtres' : 'Aucun produit trouvé'}
+        </div>
+      )}
+
+      {/* Section des prédictions */}
+      {selectedProduct && (
+        <div className="mt-8">
+          <h2 className="text-xl font-bold mb-4">Prédictions de Ventes</h2>
+          {predictionsLoading ? (
+            <div>Chargement des prédictions...</div>
+          ) : (
+            <PredictionChart predictions={predictions} />
+          )}
         </div>
       )}
     </div>

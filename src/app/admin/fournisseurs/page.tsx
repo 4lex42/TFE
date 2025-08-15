@@ -1,0 +1,145 @@
+"use client";
+
+import React, { useMemo, useState } from 'react';
+import AdminRoute from '../../../components/AdminRoute';
+import { useFournisseurs } from '../../../hooks/useFournisseurs';
+
+export default function AdminFournisseursPage() {
+  const { fournisseurs, loading, error, addFournisseur, deleteFournisseur } = useFournisseurs();
+  const [form, setForm] = useState({ nom: '', email: '', telephone: '', note: '' });
+  const [search, setSearch] = useState('');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const filtered = useMemo(() => {
+    const t = search.toLowerCase().trim();
+    if (!t) return fournisseurs;
+    return fournisseurs.filter(f =>
+      f.nom.toLowerCase().includes(t) ||
+      (f.email || '').toLowerCase().includes(t) ||
+      (f.telephone || '').toLowerCase().includes(t)
+    );
+  }, [fournisseurs, search]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.nom.trim()) {
+      setMessage({ type: 'error', text: 'Le nom est requis.' });
+      return;
+    }
+    const res = await addFournisseur({ nom: form.nom.trim(), email: form.email || null, telephone: form.telephone || null, note: form.note || null });
+    if (res.success) {
+      setMessage({ type: 'success', text: 'Fournisseur ajouté.' });
+      setForm({ nom: '', email: '', telephone: '', note: '' });
+    } else {
+      setMessage({ type: 'error', text: res.error || 'Erreur lors de l\'ajout.' });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Supprimer ce fournisseur ?')) return;
+    const res = await deleteFournisseur(id);
+    if (!res.success) setMessage({ type: 'error', text: res.error || 'Erreur lors de la suppression.' });
+  };
+
+  return (
+    <AdminRoute>
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Gestion des Fournisseurs</h1>
+
+        {message && (
+          <div className={`mb-4 p-3 rounded ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            {message.text}
+            <button onClick={() => setMessage(null)} className="float-right">×</button>
+          </div>
+        )}
+
+        {/* Formulaire d'ajout */}
+        <div className="bg-white border rounded p-4 mb-6">
+          <h2 className="text-lg font-semibold mb-4">Ajouter un fournisseur</h2>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-sm mb-1">Nom *</label>
+              <input value={form.nom} onChange={(e)=>setForm({...form, nom: e.target.value})} className="w-full border p-2 rounded" required />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Email</label>
+              <input type="email" value={form.email} onChange={(e)=>setForm({...form, email: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Téléphone</label>
+              <input value={form.telephone} onChange={(e)=>setForm({...form, telephone: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div className="md:col-span-4">
+              <label className="block text-sm mb-1">Note</label>
+              <input value={form.note} onChange={(e)=>setForm({...form, note: e.target.value})} className="w-full border p-2 rounded" />
+            </div>
+            <div>
+              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Ajouter</button>
+            </div>
+          </form>
+        </div>
+
+        {/* Recherche */}
+        <div className="mb-4">
+          <div className="relative max-w-md">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              placeholder="Rechercher par nom, email ou téléphone..."
+              value={search}
+              onChange={(e)=>setSearch(e.target.value)}
+              className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+            {search && (
+              <button onClick={()=>setSearch('')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Liste */}
+        <div className="bg-white border rounded">
+          <div className="grid grid-cols-12 gap-3 px-4 py-2 text-sm font-medium text-gray-700 border-b bg-gray-50 rounded-t">
+            <div className="col-span-3">Nom</div>
+            <div className="col-span-3">Email</div>
+            <div className="col-span-3">Téléphone</div>
+            <div className="col-span-3">Actions</div>
+          </div>
+          {loading ? (
+            <div className="p-4 text-sm text-gray-500">Chargement...</div>
+          ) : error ? (
+            <div className="p-4 text-sm text-red-600">Erreur: {error}</div>
+          ) : filtered.length === 0 ? (
+            <div className="p-4 text-sm text-gray-500">Aucun fournisseur trouvé</div>
+          ) : (
+            <div className="divide-y">
+              {filtered.map(f => (
+                <div key={f.id} className="grid grid-cols-12 gap-3 px-4 py-2 items-center">
+                  <div className="col-span-3 truncate" title={f.nom}>{f.nom}</div>
+                  <div className="col-span-3 truncate" title={f.email || ''}>{f.email || '-'}</div>
+                  <div className="col-span-3 truncate" title={f.telephone || ''}>{f.telephone || '-'}</div>
+                  <div className="col-span-3 flex items-center gap-2">
+                    <button
+                      onClick={() => handleDelete(f.id)}
+                      className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                      title="Supprimer"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </AdminRoute>
+  );
+}
