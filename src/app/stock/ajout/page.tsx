@@ -22,32 +22,62 @@ export default function AjoutStockPage() {
 
     try {
       const produit = produits.find(p => p.id === selectedProduct);
+      const fournisseur = fournisseurs.find(f => f.id === selectedFournisseur);
+      
       if (!produit) {
         setMessage({ type: 'error', text: 'Produit non trouvé' });
         return;
       }
 
+      if (!fournisseur) {
+        setMessage({ type: 'error', text: 'Fournisseur non trouvé' });
+        return;
+      }
+
+      // 1. Enregistrer l'ajout dans la table ajout_produits
+      const { data: ajoutData, error: ajoutError } = await supabase
+        .from('ajout_produits')
+        .insert([{
+          date: new Date().toISOString().split('T')[0], // Date au format YYYY-MM-DD
+          fournisseur: fournisseur.nom,
+          quantity: quantityToAdd,
+          type: 'AJOUT',
+          note: `Ajout de stock par ${fournisseur.nom}`,
+          produit_id: selectedProduct
+        }])
+        .select()
+        .single();
+
+      if (ajoutError) {
+        console.error('Erreur lors de l\'enregistrement de l\'ajout:', ajoutError);
+        setMessage({ type: 'error', text: `Erreur lors de l'enregistrement: ${ajoutError.message}` });
+        return;
+      }
+
+      // 2. Mettre à jour le stock du produit
       const newQuantity = produit.quantity + quantityToAdd;
       const result = await updateProduit(selectedProduct, { quantity: newQuantity });
 
       if (result.success) {
-        // Enregistrer le lien produit-fournisseur
+        // 3. Enregistrer le lien produit-fournisseur
         const { error: lienError } = await supabase
           .from('lien_produit_fournisseur')
           .insert([{ produit_id: selectedProduct, fournisseur_id: selectedFournisseur }] );
 
         if (lienError) {
-          setMessage({ type: 'error', text: `Stock mis à jour, mais erreur lors de l'association fournisseur: ${lienError.message}` });
-          return;
+          console.warn('Erreur lors de l\'association fournisseur:', lienError);
+          // On continue même si l'association échoue
         }
 
         setMessage({ type: 'success', text: `Stock mis à jour avec succès. Nouvelle quantité: ${newQuantity}` });
         setQuantityToAdd(0);
         setSelectedFournisseur('');
+        setSelectedProduct('');
       } else {
-        setMessage({ type: 'error', text: result.error || 'Une erreur est survenue' });
+        setMessage({ type: 'error', text: result.error || 'Une erreur est survenue lors de la mise à jour du stock' });
       }
     } catch (err) {
+      console.error('Erreur complète:', err);
       setMessage({ type: 'error', text: 'Une erreur est survenue lors de la mise à jour du stock' });
     }
   };
@@ -57,9 +87,7 @@ export default function AjoutStockPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">
-        Ajouter au Stock
-      </h1>
+      <h1 className="text-3xl font-bold text-center mb-8">Ajouter au Stock</h1>
 
       <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
         {message && (

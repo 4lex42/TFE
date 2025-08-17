@@ -1,12 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useProduits } from '../../hooks/useProduits';
 import { PredictionChart } from '../../components/PredictionChart';
 import { usePredictions } from '../../hooks/usePredictions';
+import DashboardChart from '../../components/DashboardChart';
+import ProduitPredictionChart from '../../components/ProduitPredictionChart';
 
 export default function DashboardPage() {
   const { produits, loading, error } = useProduits();
+  const [selectedProduitForPrediction, setSelectedProduitForPrediction] = useState<string>('');
   
   // Trouver les produits en stock critique
   const produitsEnAlerte = produits.filter(
@@ -64,15 +67,21 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Graphique des prédictions pour le premier produit en alerte */}
+      {/* Graphique des prédictions pour le premier produit en alerte
       {produitsEnAlerte.length > 0 && (
-        <div className="bg-white rounded-lg shadow-lg p-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
           <h2 className="text-xl font-bold mb-4">
             Prédictions pour {produitsEnAlerte[0].nom}
           </h2>
           <PredictionChartWrapper productId={produitsEnAlerte[0].id} />
         </div>
-      )}
+      )} */}
+
+      {/* Graphique des mouvements de stock par produit */}
+      <DashboardChart onProduitSelect={setSelectedProduitForPrediction} />
+
+      {/* Graphique de prédiction pour le produit sélectionné */}
+      <ProduitPredictionChart selectedProduitId={selectedProduitForPrediction} />
     </div>
   );
 }

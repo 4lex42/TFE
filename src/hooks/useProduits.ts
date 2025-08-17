@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { enregistrerMouvementStock } from '../lib/stockUtils';
 
 export interface Produit {
   id: string;
@@ -98,6 +99,21 @@ export const useProduits = () => {
       // Ajouter le nouveau produit à l'état local avec des catégories vides
       const newProduitWithId = data?.[0];
       if (newProduitWithId) {
+        // IMPORTANT : Enregistrer la création du produit dans l'historique
+        const resultatHistorique = await enregistrerMouvementStock(
+          newProduitWithId.id,
+          'AJOUT',
+          newProduit.quantity,
+          `Création du nouveau produit "${newProduit.nom}" (${newProduit.code}) - stock initial: ${newProduit.quantity}`
+        );
+        
+        if (!resultatHistorique.success) {
+          console.error('ÉCHEC CRITIQUE de l\'enregistrement de l\'historique de création:', resultatHistorique.error);
+          // Continuer mais logger l'erreur critique
+        } else {
+          console.log(`Historique de création enregistré pour le produit ${newProduit.nom}`);
+        }
+
         setProduits(prevProduits => [
           ...prevProduits, 
           {
@@ -118,6 +134,33 @@ export const useProduits = () => {
 
   const updateProduit = async (id: string, updates: Partial<Produit>) => {
     try {
+      // Si la quantité est mise à jour, enregistrer le mouvement dans l'historique
+      if (updates.quantity !== undefined) {
+        const produit = produits.find(p => p.id === id);
+        if (produit) {
+          const difference = updates.quantity - produit.quantity;
+          if (difference !== 0) {
+            const typeMouvement = difference > 0 ? 'AJOUT' : 'RETRAIT_MANUEL';
+            const note = difference > 0 
+              ? `Modification du stock via gestion des produits: ${produit.quantity} → ${updates.quantity} (+${difference})`
+              : `Modification du stock via gestion des produits: ${produit.quantity} → ${updates.quantity} (${difference})`;
+            
+            const resultatHistorique = await enregistrerMouvementStock(
+              id,
+              typeMouvement,
+              Math.abs(difference),
+              note
+            );
+            
+            if (!resultatHistorique.success) {
+              console.error('ÉCHEC CRITIQUE de l\'enregistrement de l\'historique de modification:', resultatHistorique.error);
+            } else {
+              console.log(`Historique de modification enregistré pour le produit ${produit.nom}`);
+            }
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('produit')
         .update(updates)
@@ -148,16 +191,79 @@ export const useProduits = () => {
 
   const deleteProduit = async (id: string) => {
     try {
+      // Récupérer les informations du produit avant suppression
+      const produit = produits.find(p => p.id === id);
+      if (produit) {
+        // IMPORTANT : Enregistrer la suppression dans l'historique AVANT toute suppression
+        // Cela garantit que l'historique est toujours conservé
+        const resultatHistorique = await enregistrerMouvementStock(
+          id,
+          'SUPPRESSION',
+          produit.quantity,
+          `Suppression du produit "${produit.nom}" (${produit.code}) - tout le stock retiré`
+        );
+        
+        if (!resultatHistorique.success) {
+          console.error('ÉCHEC CRITIQUE de l\'enregistrement de l\'historique:', resultatHistorique.error);
+          // Ne pas continuer si l'historique échoue - c'est critique pour la traçabilité
+          throw new Error(`Impossible d'enregistrer l'historique de suppression: ${resultatHistorique.error}`);
+        }
+        
+        console.log(`Historique de suppression enregistré pour le produit ${produit.nom}`);
+      }
+
+      // Supprimer d'abord les liens avec les catégories
+      const { error: lienError } = await supabase
+        .from('lien_categorie_produit')
+        .delete()
+        .eq('id_produit', id);
+
+      if (lienError) {
+        console.warn('Erreur lors de la suppression des liens catégories:', lienError);
+      }
+
+      // Supprimer les liens avec les achats
+      const { error: achatError } = await supabase
+        .from('lien_achat_produit')
+        .delete()
+        .eq('id_produit', id);
+
+      if (achatError) {
+        console.warn('Erreur lors de la suppression des liens achats:', achatError);
+      }
+
+      // Maintenant supprimer le produit
       const { error } = await supabase
         .from('produit')
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        // Gérer spécifiquement les erreurs de contraintes
+        if (error.code === '23503') {
+          throw new Error('Impossible de supprimer ce produit car il est encore référencé dans d\'autres tables. Veuillez d\'abord supprimer les références.');
+        }
+        throw error;
+      }
+
       setProduits(produits.filter(p => p.id !== id));
       return { success: true };
     } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Une erreur est survenue' };
+      console.error('Erreur lors de la suppression du produit:', err);
+      
+      // Message d'erreur plus spécifique
+      let errorMessage = 'Une erreur est survenue';
+      if (err instanceof Error) {
+        if (err.message.includes('référencé')) {
+          errorMessage = err.message;
+        } else if (err.message.includes('historique')) {
+          errorMessage = `Erreur critique: ${err.message}`;
+        } else {
+          errorMessage = `Erreur lors de la suppression: ${err.message}`;
+        }
+      }
+      
+      return { success: false, error: errorMessage };
     }
   };
 

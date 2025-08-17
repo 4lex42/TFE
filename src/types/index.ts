@@ -9,6 +9,7 @@ export interface User extends BaseEntity {
   role: string | null;
   email: string;
   password: string;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 // Types pour les magasins
@@ -87,6 +88,19 @@ export interface AjoutProduit extends BaseEntity {
 
 export interface AjoutProduitWithProduit extends AjoutProduit {
   produit?: Produit;
+}
+
+// Types pour l'historique des mouvements de stock
+export interface HistoriqueStock extends BaseEntity {
+  produit_id: string | null; // Peut être NULL si le produit a été supprimé
+  user_id: string | null;
+  type_mouvement: 'AJOUT' | 'VENTE' | 'RETRAIT_MANUEL' | 'SUPPRESSION';
+  quantite: number;
+  note: string | null;
+  created_at: string;
+  produit?: Produit;
+  user?: User;
+  produit_supprime?: boolean; // Indique si le produit a été supprimé
 }
 
 // Types pour les achats et ventes

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { enregistrerAjoutStock, enregistrerRetraitStock } from '../lib/stockUtils';
 
 export interface AjoutProduit {
   id: string;
@@ -75,6 +76,13 @@ export const useAjoutProduits = () => {
           .eq('id', produitId);
 
         if (updateError) throw updateError;
+
+        // Enregistrer l'ajout dans l'historique
+        await enregistrerAjoutStock(
+          produitId,
+          ajoutData.quantity,
+          ajoutData.note || 'Ajout de stock'
+        );
       }
 
       await fetchAjouts(); // Rafraîchir les données
@@ -129,6 +137,13 @@ export const useAjoutProduits = () => {
           .eq('id', produit.id);
 
         if (updateError) throw updateError;
+
+        // Enregistrer le retrait dans l'historique
+        await enregistrerRetraitStock(
+          produit.id,
+          ajout.quantity,
+          'Suppression de l\'ajout de stock'
+        );
       }
 
       // Supprimer l'ajout

@@ -4,6 +4,7 @@ import { useCategories, Categorie } from '../hooks/useCategories';
 import { usePredictions } from '../hooks/usePredictions';
 import { PredictionChart } from './PredictionChart';
 import { ImageUpload } from './ImageUpload';
+import { HistoriqueProduitModal } from './HistoriqueProduitModal';
 
 export const ProductManagement: React.FC = () => {
   const { produits, loading, error, addProduit, updateProduit, deleteProduit, addCategorieToProduit, removeCategorieFromProduit } = useProduits();
@@ -11,8 +12,10 @@ export const ProductManagement: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Produit | null>(null);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string, isCritical?: boolean } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showHistoriqueModal, setShowHistoriqueModal] = useState(false);
+  const [produitHistorique, setProduitHistorique] = useState<Produit | null>(null);
   const [formData, setFormData] = useState({
     nom: '',
     quantity: 0,
@@ -207,11 +210,27 @@ export const ProductManagement: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) {
-      const result = await deleteProduit(id);
-      if (result.success) {
-        setMessage({ type: 'success', text: 'Produit supprimé avec succès' });
-      } else {
-        setMessage({ type: 'error', text: result.error || 'Une erreur est survenue' });
+      try {
+        setMessage({ type: 'info', text: 'Suppression en cours...' });
+        const result = await deleteProduit(id);
+        
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Produit supprimé avec succès' });
+        } else {
+          // Détecter si c'est une erreur critique d'historique
+          const isCriticalError = result.error?.includes('critique') || result.error?.includes('historique');
+          setMessage({ 
+            type: 'error', 
+            text: `Erreur lors de la suppression: ${result.error || 'Erreur inconnue'}`,
+            isCritical: isCriticalError
+          });
+        }
+      } catch (err) {
+        console.error('Erreur lors de la suppression:', err);
+        setMessage({ 
+          type: 'error', 
+          text: `Erreur inattendue: ${err instanceof Error ? err.message : 'Erreur inconnue'}` 
+        });
       }
     }
   };
@@ -224,6 +243,11 @@ export const ProductManagement: React.FC = () => {
   const handleCancelEdit = () => {
     setEditingProduct(null);
     setSelectedCategories([]);
+  };
+
+  const handleShowHistorique = (produit: Produit) => {
+    setProduitHistorique(produit);
+    setShowHistoriqueModal(true);
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,8 +291,16 @@ export const ProductManagement: React.FC = () => {
     <div className="container mx-auto p-6">
       {message && (
         <div className={`mb-4 p-4 rounded ${
-          message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          message.type === 'success' ? 'bg-green-100 text-green-700' : 
+          message.type === 'error' ? (message.isCritical ? 'bg-red-200 text-red-900 border-2 border-red-500' : 'bg-red-100 text-red-700') :
+          'bg-blue-100 text-blue-700'
         }`}>
+          {message.isCritical && (
+            <div className="flex items-center mb-2">
+              <span className="text-red-600 mr-2">🚨</span>
+              <span className="font-bold">ERREUR CRITIQUE - Traçabilité compromise</span>
+            </div>
+          )}
           {message.text}
           <button
             onClick={() => setMessage(null)}
@@ -755,6 +787,13 @@ export const ProductManagement: React.FC = () => {
                 {/* Actions */}
                 <div className="col-span-2 flex gap-2">
                   <button
+                    onClick={() => handleShowHistorique(produit)}
+                    className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                    title="Voir l'historique"
+                  >
+                    📊
+                  </button>
+                  <button
                     onClick={() => handleEdit(produit)}
                     className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
                     title="Modifier"
@@ -808,6 +847,16 @@ export const ProductManagement: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Modal d'historique */}
+      <HistoriqueProduitModal
+        produit={produitHistorique}
+        isOpen={showHistoriqueModal}
+        onClose={() => {
+          setShowHistoriqueModal(false);
+          setProduitHistorique(null);
+        }}
+      />
     </div>
   );
 }; 

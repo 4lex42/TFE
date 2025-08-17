@@ -72,11 +72,18 @@ export default function Navbar() {
               </Link>
             </li> */}
             {userProfile?.role === 'admin' && (
-              <li>
-                <Link href="/admin" className="text-gray-700 hover:text-blue-600">
-                  Admin
-                </Link>
-              </li>
+              <>
+                <li>
+                  <Link href="/admin" className="text-gray-700 hover:text-blue-600">
+                    Admin
+                  </Link>
+                </li>
+                {/* <li>
+                  <Link href="/admin/historique-stock" className="text-gray-700 hover:text-blue-600">
+                    Historique Stocks
+                  </Link>
+                </li> */}
+              </>
             )}
           </ul>
         </div>

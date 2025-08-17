@@ -4,10 +4,12 @@ import React, { useMemo, useState } from 'react';
 import { useFournisseurs } from '../hooks/useFournisseurs';
 
 export const FournisseursManagement: React.FC = () => {
-  const { fournisseurs, loading, error, addFournisseur, deleteFournisseur } = useFournisseurs();
+  const { fournisseurs, loading, error, addFournisseur, deleteFournisseur, updateFournisseur } = useFournisseurs();
   const [form, setForm] = useState({ nom: '', email: '', telephone: '', note: '' });
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ nom: '', email: '', telephone: '', note: '' });
 
   const filtered = useMemo(() => {
     const t = search.toLowerCase().trim();
@@ -38,6 +40,44 @@ export const FournisseursManagement: React.FC = () => {
     if (!confirm('Supprimer ce fournisseur ?')) return;
     const res = await deleteFournisseur(id);
     if (!res.success) setMessage({ type: 'error', text: res.error || 'Erreur lors de la suppression.' });
+  };
+
+  const handleEdit = (fournisseur: any) => {
+    setEditingId(fournisseur.id);
+    setEditForm({
+      nom: fournisseur.nom,
+      email: fournisseur.email || '',
+      telephone: fournisseur.telephone || '',
+      note: fournisseur.note || ''
+    });
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingId || !editForm.nom.trim()) {
+      setMessage({ type: 'error', text: 'Le nom est requis.' });
+      return;
+    }
+    
+    const res = await updateFournisseur(editingId, {
+      nom: editForm.nom.trim(),
+      email: editForm.email || null,
+      telephone: editForm.telephone || null,
+      note: editForm.note || null
+    });
+    
+    if (res.success) {
+      setMessage({ type: 'success', text: 'Fournisseur modifié avec succès.' });
+      setEditingId(null);
+      setEditForm({ nom: '', email: '', telephone: '', note: '' });
+    } else {
+      setMessage({ type: 'error', text: res.error || 'Erreur lors de la modification.' });
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditForm({ nom: '', email: '', telephone: '', note: '' });
   };
 
   return (
@@ -103,10 +143,11 @@ export const FournisseursManagement: React.FC = () => {
       {/* Liste */}
       <div className="bg-white border rounded">
         <div className="grid grid-cols-12 gap-3 px-4 py-2 text-sm font-medium text-gray-700 border-b bg-gray-50 rounded-t">
-          <div className="col-span-3">Nom</div>
+          <div className="col-span-2">Nom</div>
           <div className="col-span-3">Email</div>
-          <div className="col-span-3">Téléphone</div>
-          <div className="col-span-3">Actions</div>
+          <div className="col-span-2">Téléphone</div>
+          <div className="col-span-3">Note</div>
+          <div className="col-span-2">Actions</div>
         </div>
         {loading ? (
           <div className="p-4 text-sm text-gray-500">Chargement...</div>
@@ -118,18 +159,83 @@ export const FournisseursManagement: React.FC = () => {
           <div className="divide-y">
             {filtered.map(f => (
               <div key={f.id} className="grid grid-cols-12 gap-3 px-4 py-2 items-center">
-                <div className="col-span-3 truncate" title={f.nom}>{f.nom}</div>
-                <div className="col-span-3 truncate" title={f.email || ''}>{f.email || '-'}</div>
-                <div className="col-span-3 truncate" title={f.telephone || ''}>{f.telephone || '-'}</div>
-                <div className="col-span-3 flex items-center gap-2">
-                  <button
-                    onClick={() => handleDelete(f.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
-                    title="Supprimer"
-                  >
-                    🗑️
-                  </button>
-                </div>
+                {editingId === f.id ? (
+                  // Mode édition
+                  <form onSubmit={handleUpdate} className="col-span-12 grid grid-cols-12 gap-3 items-center">
+                    <div className="col-span-2">
+                      <input
+                        value={editForm.nom}
+                        onChange={(e) => setEditForm({...editForm, nom: e.target.value})}
+                        className="w-full border p-1 rounded text-sm"
+                        required
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                        className="w-full border p-1 rounded text-sm"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <input
+                        value={editForm.telephone}
+                        onChange={(e) => setEditForm({...editForm, telephone: e.target.value})}
+                        className="w-full border p-1 rounded text-sm"
+                      />
+                    </div>
+                    <div className="col-span-3">
+                      <input
+                        value={editForm.note}
+                        onChange={(e) => setEditForm({...editForm, note: e.target.value})}
+                        className="w-full border p-1 rounded text-sm"
+                        placeholder="Note optionnelle"
+                      />
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <button
+                        type="submit"
+                        className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                        title="Sauvegarder"
+                      >
+                        ✅
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600"
+                        title="Annuler"
+                      >
+                        ❌
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  // Mode affichage
+                  <>
+                    <div className="col-span-2 truncate" title={f.nom}>{f.nom}</div>
+                    <div className="col-span-3 truncate" title={f.email || ''}>{f.email || '-'}</div>
+                    <div className="col-span-2 truncate" title={f.telephone || ''}>{f.telephone || '-'}</div>
+                    <div className="col-span-3 truncate" title={f.note || ''}>{f.note || '-'}</div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(f)}
+                        className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                        title="Modifier"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => handleDelete(f.id)}
+                        className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                        title="Supprimer"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

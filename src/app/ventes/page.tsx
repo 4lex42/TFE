@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import { enregistrerVenteStock } from '../../lib/stockUtils';
 
 interface Produit {
   id: string;
@@ -108,7 +110,7 @@ export default function VentesPage() {
 
       if (detailsError) throw detailsError;
 
-      // 3. Mettre à jour les stocks
+      // 3. Mettre à jour les stocks et enregistrer dans l'historique
       for (const item of panier) {
         const { error: updateError } = await supabase
           .from('produit')
@@ -118,6 +120,13 @@ export default function VentesPage() {
           .eq('id', item.produit.id);
 
         if (updateError) throw updateError;
+
+        // Enregistrer la vente dans l'historique
+        await enregistrerVenteStock(
+          item.produit.id,
+          item.quantite,
+          `Vente - Achat #${achatData.id}`
+        );
       }
 
       // 4. Vider le panier et rafraîchir les produits
@@ -143,7 +152,15 @@ export default function VentesPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Enregistrer une vente</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Enregistrer une vente</h1>
+        <Link 
+          href="/ventes/historique" 
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+        >
+          Voir l'historique des ventes
+        </Link>
+      </div>
 
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

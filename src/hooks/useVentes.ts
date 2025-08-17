@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { enregistrerVenteStock } from '../lib/stockUtils';
 
 export interface Achat {
   id: string;
@@ -95,8 +96,9 @@ export const useVentes = () => {
 
       if (produitsError) throw produitsError;
 
-      // Mettre à jour les quantités des produits
+      // Mettre à jour les quantités des produits et enregistrer dans l'historique
       for (const produit of produits) {
+        // Mettre à jour le stock
         const { error: updateError } = await supabase
           .from('produit')
           .update({ 
@@ -108,6 +110,13 @@ export const useVentes = () => {
           .eq('id', produit.produit_id);
 
         if (updateError) throw updateError;
+
+        // Enregistrer la vente dans l'historique
+        await enregistrerVenteStock(
+          produit.produit_id,
+          produit.quantite,
+          `Vente - Achat #${achat.id}`
+        );
       }
 
       await fetchAchats(); // Rafraîchir les données

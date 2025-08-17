@@ -62,6 +62,25 @@ export const useFournisseurs = () => {
     }
   };
 
+  const updateFournisseur = async (id: string, updates: Partial<Omit<Fournisseur, 'id' | 'created_at'>>) => {
+    try {
+      const { data, error } = await supabase
+        .from('fournisseurs')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (data) {
+        setFournisseurs(prev => prev.map(f => f.id === id ? data : f));
+      }
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Une erreur est survenue' };
+    }
+  };
+
   const searchFournisseurs = (term: string) => {
     const t = term.toLowerCase().trim();
     if (!t) return fournisseurs;
@@ -82,6 +101,7 @@ export const useFournisseurs = () => {
     error,
     addFournisseur,
     deleteFournisseur,
+    updateFournisseur,
     searchFournisseurs,
     refreshFournisseurs: fetchFournisseurs,
   };

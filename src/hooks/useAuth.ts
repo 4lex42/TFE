@@ -28,6 +28,36 @@ export const useAuth = () => {
       });
 
       if (error) throw error;
+
+      // Vérifier le statut d'approbation de l'utilisateur
+      if (data.user) {
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('status')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        if (userProfile.status === 'pending') {
+          await supabase.auth.signOut();
+          return { 
+            success: false, 
+            error: 'Votre compte est en attente d\'approbation par un administrateur. Vous recevrez un email de confirmation une fois approuvé.' 
+          };
+        }
+
+        if (userProfile.status === 'rejected') {
+          await supabase.auth.signOut();
+          return { 
+            success: false, 
+            error: 'Votre compte a été rejeté. Veuillez contacter l\'administrateur pour plus d\'informations.' 
+          };
+        }
+
+
+      }
+
       return { success: true, data };
     } catch (err) {
       return { 
@@ -64,6 +94,7 @@ export const useAuth = () => {
               email,
               name,
               role,
+              status: 'pending', // Nouveaux utilisateurs sont en attente d'approbation
             }
           ]);
 
