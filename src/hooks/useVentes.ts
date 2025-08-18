@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { enregistrerVenteStock } from '../lib/stockUtils';
+import { useAuth } from './useAuth';
 
 export interface Achat {
   id: string;
@@ -16,11 +17,13 @@ export interface AchatProduit {
   produit_id: string;
   quantite: number;
   prix_unitaire: number;
+  tva_appliquee?: number;
   produit?: {
     id: string;
     nom: string;
     prix: number;
     photo?: string | null;
+    tva_direct?: number;
   };
 }
 
@@ -38,6 +41,7 @@ export const useVentes = () => {
   const [achats, setAchats] = useState<Achat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const fetchAchats = async () => {
     try {
@@ -49,7 +53,8 @@ export const useVentes = () => {
             id,
             quantite,
             prix_unitaire,
-            produit:produit(id, nom, prix, photo)
+            tva_appliquee,
+            produit:produit(id, nom, prix, photo, tva_direct)
           )
         `)
         .order('date', { ascending: false });
@@ -84,15 +89,26 @@ export const useVentes = () => {
 
       if (achatError) throw achatError;
 
-      // Ajouter les produits à l'achat
-      const produitsWithAchatId = produits.map(prod => ({
-        ...prod,
-        achat_id: achat.id,
-      }));
+      // Récupérer les informations TVA des produits et ajouter à l'achat
+      const produitsWithTva = await Promise.all(
+        produits.map(async (prod) => {
+          const { data: produitData } = await supabase
+            .from('produit')
+            .select('tva_direct')
+            .eq('id', prod.produit_id)
+            .single();
+          
+          return {
+            ...prod,
+            achat_id: achat.id,
+            tva_appliquee: produitData?.tva_direct || 20.00,
+          };
+        })
+      );
 
       const { error: produitsError } = await supabase
         .from('achat_produit')
-        .insert(produitsWithAchatId);
+        .insert(produitsWithTva);
 
       if (produitsError) throw produitsError;
 
@@ -115,7 +131,8 @@ export const useVentes = () => {
         await enregistrerVenteStock(
           produit.produit_id,
           produit.quantite,
-          `Vente - Achat #${achat.id}`
+          `Vente - Achat #${achat.id}`,
+          user?.id
         );
       }
 

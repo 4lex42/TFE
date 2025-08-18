@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { enregistrerAjoutStock, enregistrerRetraitStock } from '../lib/stockUtils';
+import { enregistrerAjoutStockViaAjoutProduits, enregistrerRetraitStock } from '../lib/stockUtils';
 
 export interface AjoutProduit {
   id: string;
@@ -77,11 +77,13 @@ export const useAjoutProduits = () => {
 
         if (updateError) throw updateError;
 
-        // Enregistrer l'ajout dans l'historique
-        await enregistrerAjoutStock(
-          produitId,
+        // Enregistrer l'ajout dans l'historique via ajout_produits
+        await enregistrerAjoutStockViaAjoutProduits(
+          ajout.id,
           ajoutData.quantity,
-          ajoutData.note || 'Ajout de stock'
+          ajoutData.note || 'Ajout de stock',
+          undefined,
+          produitId
         );
       }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { enregistrerMouvementStock } from '../lib/stockUtils';
+import { useAuth } from './useAuth';
 
 export interface Produit {
   id: string;
@@ -12,6 +13,7 @@ export interface Produit {
   photo?: string | null;
   description: string | null;
   tva_id?: string | null;
+  tva_direct?: number;
   predict_id?: string | null;
   ajout_produit_id?: string | null;
   categories?: Categorie[];
@@ -51,6 +53,7 @@ export const useProduits = () => {
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   const fetchProduits = async () => {
     try {
@@ -104,7 +107,8 @@ export const useProduits = () => {
           newProduitWithId.id,
           'AJOUT',
           newProduit.quantity,
-          `Création du nouveau produit "${newProduit.nom}" (${newProduit.code}) - stock initial: ${newProduit.quantity}`
+          `Création du nouveau produit "${newProduit.nom}" (${newProduit.code}) - stock initial: ${newProduit.quantity}`,
+          user?.id
         );
         
         if (!resultatHistorique.success) {
@@ -145,17 +149,21 @@ export const useProduits = () => {
               ? `Modification du stock via gestion des produits: ${produit.quantity} → ${updates.quantity} (+${difference})`
               : `Modification du stock via gestion des produits: ${produit.quantity} → ${updates.quantity} (${difference})`;
             
-            const resultatHistorique = await enregistrerMouvementStock(
-              id,
-              typeMouvement,
-              Math.abs(difference),
-              note
-            );
-            
-            if (!resultatHistorique.success) {
-              console.error('ÉCHEC CRITIQUE de l\'enregistrement de l\'historique de modification:', resultatHistorique.error);
-            } else {
-              console.log(`Historique de modification enregistré pour le produit ${produit.nom}`);
+            // Si c'est un ajout via ajout_produits, ne pas enregistrer ici car ce sera fait par la fonction spécifique
+            if (!updates.ajout_produit_id) {
+              const resultatHistorique = await enregistrerMouvementStock(
+                id,
+                typeMouvement,
+                Math.abs(difference),
+                note,
+                user?.id
+              );
+              
+              if (!resultatHistorique.success) {
+                console.error('ÉCHEC CRITIQUE de l\'enregistrement de l\'historique de modification:', resultatHistorique.error);
+              } else {
+                console.log(`Historique de modification enregistré pour le produit ${produit.nom}`);
+              }
             }
           }
         }
@@ -200,7 +208,8 @@ export const useProduits = () => {
           id,
           'SUPPRESSION',
           produit.quantity,
-          `Suppression du produit "${produit.nom}" (${produit.code}) - tout le stock retiré`
+          `Suppression du produit "${produit.nom}" (${produit.code}) - tout le stock retiré`,
+          user?.id
         );
         
         if (!resultatHistorique.success) {
@@ -341,6 +350,47 @@ export const useProduits = () => {
     }
   };
 
+  const updateTvaProduit = async (id: string, nouvelleTva: number, userId: string, note?: string) => {
+    try {
+      const produitToUpdate = produits.find(p => p.id === id);
+      if (!produitToUpdate) {
+        throw new Error('Produit non trouvé');
+      }
+
+      const ancienneTva = produitToUpdate.tva_direct || 20.00;
+
+      // Mettre à jour la TVA du produit
+      const { error: updateError } = await supabase
+        .from('produit')
+        .update({ tva_direct: nouvelleTva })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+
+      // Enregistrer la modification dans l'historique TVA
+      const { error: historiqueError } = await supabase
+        .from('historique_tva')
+        .insert([{
+          produit_id: id,
+          ancienne_tva: ancienneTva,
+          nouvelle_tva: nouvelleTva,
+          user_id: userId,
+          note: note || `Modification TVA de ${ancienneTva}% à ${nouvelleTva}%`
+        }]);
+
+      if (historiqueError) throw historiqueError;
+
+      // Mettre à jour l'état local
+      setProduits(produits.map(p => 
+        p.id === id ? { ...p, tva_direct: nouvelleTva } : p
+      ));
+
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Une erreur est survenue' };
+    }
+  };
+
   useEffect(() => {
     fetchProduits();
   }, []);
@@ -354,6 +404,7 @@ export const useProduits = () => {
     deleteProduit,
     addCategorieToProduit,
     removeCategorieFromProduit,
+    updateTvaProduit,
     refreshProduits: fetchProduits
   };
 }; 

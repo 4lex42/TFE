@@ -41,6 +41,7 @@ export interface Produit extends BaseEntity {
   photo?: string | null;
   description: string | null;
   tva_id?: string | null;
+  tva_direct?: number;
   predict_id?: string | null;
   ajout_produit_id?: string | null;
   categories?: Categorie[];
@@ -93,6 +94,7 @@ export interface AjoutProduitWithProduit extends AjoutProduit {
 // Types pour l'historique des mouvements de stock
 export interface HistoriqueStock extends BaseEntity {
   produit_id: string | null; // Peut être NULL si le produit a été supprimé
+  ajout_produit_id?: string | null; // ID de l'ajout_produits pour les ajouts via fournisseurs
   user_id: string | null;
   type_mouvement: 'AJOUT' | 'VENTE' | 'RETRAIT_MANUEL' | 'SUPPRESSION';
   quantite: number;
@@ -100,6 +102,7 @@ export interface HistoriqueStock extends BaseEntity {
   created_at: string;
   produit?: Produit;
   user?: User;
+  ajout_produit?: AjoutProduit;
   produit_supprime?: boolean; // Indique si le produit a été supprimé
 }
 
@@ -116,6 +119,7 @@ export interface AchatProduit extends BaseEntity {
   produit_id: string;
   quantite: number;
   prix_unitaire: number;
+  tva_appliquee?: number;
   produit?: {
     id: string;
     nom: string;
@@ -146,6 +150,26 @@ export interface AjoutStats {
   total_ventes: number;
   total_retraits: number;
   nombre_operations: number;
+}
+
+// Types pour l'historique TVA
+export interface HistoriqueTva extends BaseEntity {
+  produit_id: string | null;
+  ancienne_tva: number;
+  nouvelle_tva: number;
+  user_id: string | null;
+  date_modification: string;
+  note?: string | null;
+  produit?: {
+    id: string;
+    nom: string;
+    code: string;
+  };
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }
 
 // Types pour les formulaires

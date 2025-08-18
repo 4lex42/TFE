@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { enregistrerVenteStock } from '../../lib/stockUtils';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Produit {
   id: string;
@@ -24,6 +25,7 @@ export default function VentesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchProduits();
@@ -125,7 +127,8 @@ export default function VentesPage() {
         await enregistrerVenteStock(
           item.produit.id,
           item.quantite,
-          `Vente - Achat #${achatData.id}`
+          `Vente - Achat #${achatData.id}`,
+          user?.id
         );
       }
 

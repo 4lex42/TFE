@@ -140,7 +140,7 @@ export const useUsers = () => {
 
   const sendRejectionEmail = async (email: string, name: string | null) => {
     try {
-      // Utiliser l'API Supabase pour envoyer un email de rejet
+      // Utiliser Supabase Auth pour envoyer un email de rejet
       const { error } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email: email,
@@ -148,78 +148,29 @@ export const useUsers = () => {
 
       if (error) {
         console.error('Erreur lors de l\'envoi de l\'email de rejet:', error);
-        // Fallback: utiliser l'API d'envoi d'email personnalisée
-        await sendCustomRejectionEmail(email, name);
+      } else {
+        console.log('Email de rejet envoyé avec succès à:', email);
       }
     } catch (err) {
       console.error('Erreur lors de l\'envoi de l\'email de rejet:', err);
-      // Fallback: utiliser l'API d'envoi d'email personnalisée
-      await sendCustomRejectionEmail(email, name);
     }
   };
 
   const sendApprovalEmail = async (email: string, name: string | null) => {
     try {
-      // Envoyer un email d'approbation
-      await sendCustomApprovalEmail(email, name);
+      // Utiliser Supabase Auth pour envoyer un email d'approbation
+      const { error } = await supabase.auth.admin.generateLink({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) {
+        console.error('Erreur lors de l\'envoi de l\'email d\'approbation:', error);
+      } else {
+        console.log('Email d\'approbation envoyé avec succès à:', email);
+      }
     } catch (err) {
       console.error('Erreur lors de l\'envoi de l\'email d\'approbation:', err);
-    }
-  };
-
-  const sendCustomRejectionEmail = async (email: string, name: string | null) => {
-    try {
-      // Appeler votre API d'envoi d'email personnalisée
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          to: email,
-          subject: 'Demande d\'inscription rejetée',
-          template: 'rejection',
-          data: {
-            name: name || 'Utilisateur',
-            reason: 'Votre demande d\'inscription a été rejetée par l\'administrateur.',
-            contact: 'Veuillez contacter l\'administrateur pour plus d\'informations.'
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de l\'envoi de l\'email');
-      }
-    } catch (err) {
-      console.error('Erreur lors de l\'envoi de l\'email personnalisé:', err);
-    }
-  };
-
-  const sendCustomApprovalEmail = async (email: string, name: string | null) => {
-    try {
-      // Appeler votre API d'envoi d'email personnalisée
-      const response = await fetch('/api/send-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          to: email,
-          subject: 'Compte approuvé - Connexion autorisée',
-          template: 'approval',
-          data: {
-            name: name || 'Utilisateur',
-            message: 'Votre compte a été approuvé par l\'administrateur. Vous pouvez maintenant vous connecter.',
-            loginUrl: `${window.location.origin}/login`
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de l\'envoi de l\'email');
-      }
-    } catch (err) {
-      console.error('Erreur lors de l\'envoi de l\'email personnalisé:', err);
     }
   };
 

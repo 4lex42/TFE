@@ -9,11 +9,12 @@ import { FournisseursManagement } from '../../components/FournisseursManagement'
 import { useUsers } from '../../hooks/useUsers';
 import { useHistoriqueStock } from '../../hooks/useHistoriqueStock';
 import { HistoriqueStock } from '../../types';
+import { TvaHistoryManagement } from '../../components/TvaHistoryManagement';
 
 export default function AdminPage() {
   const { users, createUser, deleteUser, updateUserStatus } = useUsers();
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'categories' | 'fournisseurs' | 'historique'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'roles' | 'categories' | 'fournisseurs' | 'historique' | 'tva'>('users');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     type: 'user';
@@ -205,6 +206,16 @@ export default function AdminPage() {
               }`}
             >
               Historique des Stocks
+            </button>
+            <button
+              onClick={() => setActiveTab('tva')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'tva'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Historique TVA
             </button>
           </nav>
         </div>
@@ -538,6 +549,12 @@ export default function AdminPage() {
                   </table>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'tva' && (
+            <div>
+              <TvaHistoryManagement />
             </div>
           )}
         </div>

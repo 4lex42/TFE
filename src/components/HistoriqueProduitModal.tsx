@@ -32,7 +32,7 @@ export const HistoriqueProduitModal: React.FC<HistoriqueProduitModalProps> = ({
     
     try {
       const result = await getHistoriqueByProduit(produit.id);
-      if (result.success) {
+      if (result.success && result.data) {
         setHistorique(result.data);
       } else {
         setError(result.error || 'Erreur lors du chargement de l\'historique');
@@ -122,12 +122,6 @@ export const HistoriqueProduitModal: React.FC<HistoriqueProduitModalProps> = ({
                      {historique.filter(h => h.type_mouvement === 'RETRAIT_MANUEL').length}
                    </p>
                  </div>
-                 <div className="bg-red-100 rounded-lg p-4">
-                   <h3 className="text-sm font-medium text-red-700">Suppressions</h3>
-                   <p className="text-2xl font-bold text-red-800">
-                     {historique.filter(h => h.type_mouvement === 'SUPPRESSION').length}
-                   </p>
-                 </div>
               </div>
 
               {/* Tableau de l'historique */}
@@ -168,10 +162,24 @@ export const HistoriqueProduitModal: React.FC<HistoriqueProduitModalProps> = ({
                             {mouvement.quantite}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-900">
-                            {mouvement.user?.name || mouvement.user?.email || 'Utilisateur inconnu'}
+                            {mouvement.user ? (
+                              <div>
+                                <div className="font-medium">{mouvement.user.name || 'Nom non défini'}</div>
+                                <div className="text-gray-500">{mouvement.user.email || 'Email non défini'}</div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic">Utilisateur inconnu</span>
+                            )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
-                            {mouvement.note || '-'}
+                          <td className="px-4 py-3 text-sm text-gray-900 max-w-xs">
+                            <div>
+                              {mouvement.note || '-'}
+                              {mouvement.ajout_produit && (
+                                <div className="text-xs text-blue-600 mt-1">
+                                  Fournisseur: {mouvement.ajout_produit.fournisseur}
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

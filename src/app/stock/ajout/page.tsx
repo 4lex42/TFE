@@ -4,10 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { useProduits, Produit } from '../../../hooks/useProduits';
 import { supabase } from '../../../lib/supabase';
 import { useFournisseurs } from '../../../hooks/useFournisseurs';
+import { enregistrerAjoutStockViaAjoutProduits } from '../../../lib/stockUtils';
+import { useAuth } from '../../../hooks/useAuth';
 
 export default function AjoutStockPage() {
   const { produits, loading, error, updateProduit } = useProduits();
   const { fournisseurs, loading: fournisseursLoading, error: fournisseursError } = useFournisseurs();
+  const { user } = useAuth();
   const [selectedProduct, setSelectedProduct] = useState<string>('');
   const [selectedFournisseur, setSelectedFournisseur] = useState<string>('');
   const [quantityToAdd, setQuantityToAdd] = useState<number>(0);
@@ -42,8 +45,7 @@ export default function AjoutStockPage() {
           fournisseur: fournisseur.nom,
           quantity: quantityToAdd,
           type: 'AJOUT',
-          note: `Ajout de stock par ${fournisseur.nom}`,
-          produit_id: selectedProduct
+          note: `Ajout de stock par ${fournisseur.nom}`
         }])
         .select()
         .single();
@@ -54,28 +56,45 @@ export default function AjoutStockPage() {
         return;
       }
 
-      // 2. Mettre à jour le stock du produit
+      // 2. Mettre à jour le stock du produit et lier à l'ajout_produits
       const newQuantity = produit.quantity + quantityToAdd;
-      const result = await updateProduit(selectedProduct, { quantity: newQuantity });
+      const result = await updateProduit(selectedProduct, { 
+        quantity: newQuantity,
+        ajout_produit_id: ajoutData.id
+      });
 
-      if (result.success) {
-        // 3. Enregistrer le lien produit-fournisseur
-        const { error: lienError } = await supabase
-          .from('lien_produit_fournisseur')
-          .insert([{ produit_id: selectedProduct, fournisseur_id: selectedFournisseur }] );
+              if (result.success) {
+          // 3. Enregistrer le mouvement dans l'historique via ajout_produits
+          const resultatHistorique = await enregistrerAjoutStockViaAjoutProduits(
+            ajoutData.id,
+            quantityToAdd,
+            `Ajout de stock par ${fournisseur.nom}`,
+            user?.id,
+            selectedProduct
+          );
 
-        if (lienError) {
-          console.warn('Erreur lors de l\'association fournisseur:', lienError);
-          // On continue même si l'association échoue
+          if (!resultatHistorique.success) {
+            console.warn('Échec de l\'enregistrement de l\'historique:', resultatHistorique.error);
+            // On continue même si l'historique échoue
+          }
+
+          // 4. Enregistrer le lien produit-fournisseur
+          const { error: lienError } = await supabase
+            .from('lien_produit_fournisseur')
+            .insert([{ produit_id: selectedProduct, fournisseur_id: selectedFournisseur }] );
+
+          if (lienError) {
+            console.warn('Erreur lors de l\'association fournisseur:', lienError);
+            // On continue même si l'association échoue
+          }
+
+          setMessage({ type: 'success', text: `Stock mis à jour avec succès. Nouvelle quantité: ${newQuantity}` });
+          setQuantityToAdd(0);
+          setSelectedFournisseur('');
+          setSelectedProduct('');
+        } else {
+          setMessage({ type: 'error', text: result.error || 'Une erreur est survenue lors de la mise à jour du stock' });
         }
-
-        setMessage({ type: 'success', text: `Stock mis à jour avec succès. Nouvelle quantité: ${newQuantity}` });
-        setQuantityToAdd(0);
-        setSelectedFournisseur('');
-        setSelectedProduct('');
-      } else {
-        setMessage({ type: 'error', text: result.error || 'Une erreur est survenue lors de la mise à jour du stock' });
-      }
     } catch (err) {
       console.error('Erreur complète:', err);
       setMessage({ type: 'error', text: 'Une erreur est survenue lors de la mise à jour du stock' });

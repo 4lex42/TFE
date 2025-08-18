@@ -388,45 +388,6 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
       <div className="h-96">
         <Line data={chartData} options={chartOptions} />
       </div>
-
-      {/* Détails de la prédiction */}
-      <div className="mt-6">
-        <h3 className="text-lg font-semibold mb-3">Détails de la Prédiction</h3>
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <h4 className="font-semibold text-gray-700 mb-2">Équation de la Tendance</h4>
-              <p className="text-sm text-gray-600">
-                Stock = {prediction.slope.toFixed(2)} × Jours + {prediction.intercept.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-700 mb-2">Interprétation</h4>
-              <p className="text-sm text-gray-600">
-                {prediction.slope > 0 
-                  ? `Le stock augmente de ${Math.abs(prediction.slope).toFixed(2)} unités par jour en moyenne`
-                  : `Le stock diminue de ${Math.abs(prediction.slope).toFixed(2)} unités par jour en moyenne`
-                }
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-700 mb-2">Qualité de la Prédiction</h4>
-              <p className="text-sm text-gray-600">
-                Précision = {(prediction.rSquared * 100).toFixed(1)}% - 
-                {prediction.rSquared > 0.8 ? ' Excellente prédiction' : 
-                 prediction.rSquared > 0.6 ? ' Bonne prédiction' : 
-                 prediction.rSquared > 0.4 ? ' Prédiction acceptable' : ' Prédiction faible'}
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-700 mb-2">Stock Prédit</h4>
-              <p className="text-sm text-gray-600">
-                Dans {predictionDays} jours : {Math.max(0, prediction.futurePrediction).toFixed(0)} unités
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

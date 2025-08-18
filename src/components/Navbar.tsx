@@ -39,7 +39,8 @@ export default function Navbar() {
     <nav className="bg-white border-b border-gray-200 shadow-sm px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center">
-          <div className="text-2xl font-bold text-blue-600">Gestion Stock</div>
+          <div className="text-2xl font-bold text-blue-600">Star </div>
+          <div className="text-2xl font-bold text-yellow-600">Mobile</div>
           <ul className="flex space-x-6 text-sm font-medium ml-10">
             {/* <li>
               <Link href="/" className="text-gray-700 hover:text-blue-600">

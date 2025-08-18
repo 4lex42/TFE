@@ -2,13 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { useProduits, Produit } from '../hooks/useProduits';
 import { useCategories, Categorie } from '../hooks/useCategories';
 import { usePredictions } from '../hooks/usePredictions';
+import { useAuth } from '../hooks/useAuth';
 import { PredictionChart } from './PredictionChart';
 import { ImageUpload } from './ImageUpload';
 import { HistoriqueProduitModal } from './HistoriqueProduitModal';
 
 export const ProductManagement: React.FC = () => {
-  const { produits, loading, error, addProduit, updateProduit, deleteProduit, addCategorieToProduit, removeCategorieFromProduit } = useProduits();
+  const { produits, loading, error, addProduit, updateProduit, deleteProduit, addCategorieToProduit, removeCategorieFromProduit, updateTvaProduit } = useProduits();
   const { categories, loading: categoriesLoading } = useCategories();
+  const { user } = useAuth();
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Produit | null>(null);
@@ -16,6 +18,10 @@ export const ProductManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showHistoriqueModal, setShowHistoriqueModal] = useState(false);
   const [produitHistorique, setProduitHistorique] = useState<Produit | null>(null);
+  const [showTvaModal, setShowTvaModal] = useState(false);
+  const [produitTva, setProduitTva] = useState<Produit | null>(null);
+  const [nouvelleTva, setNouvelleTva] = useState<number>(20.00);
+  const [tvaNote, setTvaNote] = useState<string>('');
   const [formData, setFormData] = useState({
     nom: '',
     quantity: 0,
@@ -23,7 +29,8 @@ export const ProductManagement: React.FC = () => {
     prix: 0,
     code: '',
     description: '',
-    photo: ''
+    photo: '',
+    tva_direct: 20.00
   });
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categoryFilterIds, setCategoryFilterIds] = useState<string[]>([]);
@@ -93,7 +100,8 @@ export const ProductManagement: React.FC = () => {
         prix: 0,
         code: '',
         description: '',
-        photo: ''
+        photo: '',
+        tva_direct: 20.00
       });
       setSelectedCategories([]);
       setMessage({ type: 'success', text: 'Produit ajouté avec succès' });
@@ -248,6 +256,32 @@ export const ProductManagement: React.FC = () => {
   const handleShowHistorique = (produit: Produit) => {
     setProduitHistorique(produit);
     setShowHistoriqueModal(true);
+  };
+
+  const handleShowTvaModal = (produit: Produit) => {
+    setProduitTva(produit);
+    setNouvelleTva(produit.tva_direct || 20.00);
+    setTvaNote('');
+    setShowTvaModal(true);
+  };
+
+  const handleUpdateTva = async () => {
+    if (!produitTva || !user) return;
+
+    const result = await updateTvaProduit(
+      produitTva.id,
+      nouvelleTva,
+      user.id,
+      tvaNote
+    );
+
+    if (result.success) {
+      setShowTvaModal(false);
+      setProduitTva(null);
+      setMessage({ type: 'success', text: 'TVA mise à jour avec succès' });
+    } else {
+      setMessage({ type: 'error', text: result.error || 'Une erreur est survenue' });
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -527,6 +561,20 @@ export const ProductManagement: React.FC = () => {
                   className="w-full border p-2 rounded"
                 />
               </div>
+              <div>
+                <label className="block mb-1">TVA (%)</label>
+                <input
+                  type="number"
+                  name="tva_direct"
+                  value={formData.tva_direct}
+                  onChange={handleInputChange}
+                  className="w-full border p-2 rounded"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  required
+                />
+              </div>
             </div>
             
             {/* Upload d'image */}
@@ -577,7 +625,8 @@ export const ProductManagement: React.FC = () => {
                     prix: 0,
                     code: '',
                     description: '',
-                    photo: ''
+                    photo: '',
+                    tva_direct: 20.00
                   });
                   setSelectedCategories([]);
                 }}
@@ -592,13 +641,14 @@ export const ProductManagement: React.FC = () => {
 
       {/* En-tête du tableau */}
       <div className="bg-gray-100 p-4 rounded-t border-b">
-        <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
+        <div className="grid grid-cols-13 gap-4 text-sm font-medium text-gray-700">
           <div className="col-span-2">Image</div>
           <div className="col-span-2">Nom</div>
           <div className="col-span-1">Code</div>
           <div className="col-span-1">Stock</div>
           <div className="col-span-1">Seuil</div>
           <div className="col-span-1">Prix</div>
+          <div className="col-span-1">TVA</div>
           <div className="col-span-2">Description</div>
           <div className="col-span-2">Actions</div>
         </div>
@@ -610,7 +660,7 @@ export const ProductManagement: React.FC = () => {
           <div key={produit.id} className="border rounded p-4">
             {editingProduct?.id === produit.id ? (
               <form onSubmit={handleEditSubmit} className="space-y-4">
-                <div className="grid grid-cols-12 gap-4">
+                <div className="grid grid-cols-13 gap-4">
                   {/* Image */}
                   <div className="col-span-2">
                     <ImageUpload
@@ -693,6 +743,21 @@ export const ProductManagement: React.FC = () => {
                     />
                   </div>
                   
+                  {/* TVA */}
+                  <div className="col-span-1">
+                    <input
+                      type="number"
+                      name="tva_direct"
+                      value={editingProduct.tva_direct || 20.00}
+                      onChange={handleEditInputChange}
+                      className="w-full border p-1 rounded text-sm"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      required
+                    />
+                  </div>
+                  
                   {/* Actions */}
                   <div className="col-span-2 flex gap-2">
                     <button
@@ -734,7 +799,7 @@ export const ProductManagement: React.FC = () => {
                 </div>
               </form>
             ) : (
-              <div className="grid grid-cols-12 gap-4 h-full items-center">
+              <div className="grid grid-cols-13 gap-4 h-full items-center">
                 {/* Image */}
                 <div className="col-span-2 flex items-center">
                   {produit.photo ? (
@@ -779,6 +844,11 @@ export const ProductManagement: React.FC = () => {
                   {produit.prix}€
                 </div>
                 
+                {/* TVA */}
+                <div className="col-span-1 text-sm font-medium text-gray-900">
+                  {produit.tva_direct || 20.00}%
+                </div>
+                
                 {/* Description */}
                 <div className="col-span-2 text-sm text-gray-600 truncate">
                   {produit.description || 'Aucune description'}
@@ -792,6 +862,13 @@ export const ProductManagement: React.FC = () => {
                     title="Voir l'historique"
                   >
                     📊
+                  </button>
+                  <button
+                    onClick={() => handleShowTvaModal(produit)}
+                    className="bg-purple-500 text-white px-2 py-1 rounded text-xs hover:bg-purple-600"
+                    title="Modifier TVA"
+                  >
+                    💰
                   </button>
                   <button
                     onClick={() => handleEdit(produit)}
@@ -843,7 +920,10 @@ export const ProductManagement: React.FC = () => {
           {predictionsLoading ? (
             <div>Chargement des prédictions...</div>
           ) : (
-            <PredictionChart predictions={predictions} />
+            <PredictionChart 
+              historicalData={predictions} 
+              prediction={getPredictionForNextPeriod()}
+            />
           )}
         </div>
       )}
@@ -857,6 +937,75 @@ export const ProductManagement: React.FC = () => {
           setProduitHistorique(null);
         }}
       />
+
+      {/* Modal de modification TVA */}
+      {showTvaModal && produitTva && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold mb-4">
+              Modifier la TVA - {produitTva.nom}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  TVA actuelle
+                </label>
+                <div className="text-lg font-semibold text-gray-900">
+                  {produitTva.tva_direct || 20.00}%
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nouvelle TVA (%)
+                </label>
+                <input
+                  type="number"
+                  value={nouvelleTva}
+                  onChange={(e) => setNouvelleTva(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Note (optionnel)
+                </label>
+                <textarea
+                  value={tvaNote}
+                  onChange={(e) => setTvaNote(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  rows={3}
+                  placeholder="Raison de la modification..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleUpdateTva}
+                className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
+              >
+                Mettre à jour
+              </button>
+              <button
+                onClick={() => {
+                  setShowTvaModal(false);
+                  setProduitTva(null);
+                }}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }; 

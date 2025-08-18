@@ -17,10 +17,12 @@ interface VenteProduit {
   produit_id: string;
   quantite: number;
   prix_unitaire: number;
+  tva_appliquee?: number;
   produit: {
     id: string;
     nom: string;
     code: string;
+    tva_direct?: number;
   };
 }
 
@@ -51,7 +53,8 @@ export default function HistoriqueVentesPage() {
             id,
             quantite,
             prix_unitaire,
-            produit(id, nom, code)
+            tva_appliquee,
+            produit(id, nom, code, tva_direct)
           )
         `)
         .order('date', { ascending: false });
@@ -72,6 +75,7 @@ export default function HistoriqueVentesPage() {
             produit_id: prod.produit.id,
             quantite: prod.quantite,
             prix_unitaire: prod.prix_unitaire,
+            tva_appliquee: prod.tva_appliquee,
             produit: prod.produit
           })),
           total
@@ -194,6 +198,9 @@ export default function HistoriqueVentesPage() {
                           <span className="text-gray-600 ml-2">({produit.produit.code})</span>
                         </div>
                         <div className="text-right">
+                          <div className="text-xs text-gray-500">
+                            TVA: {produit.tva_appliquee || produit.produit.tva_direct || 20.00}%
+                          </div>
                           <span>{produit.quantite} x {produit.prix_unitaire.toFixed(2)} €</span>
                           <span className="font-medium ml-2">
                             = {(produit.quantite * produit.prix_unitaire).toFixed(2)} €

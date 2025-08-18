@@ -85,7 +85,8 @@ export const useHistoriqueStock = () => {
         .select(`
           *,
           produit(id, nom, code),
-          users(id, name, email)
+          users(id, name, email),
+          ajout_produit:ajout_produits(id, date, fournisseur, quantity, type, note)
         `)
         .eq('produit_id', produitId)
         .order('created_at', { ascending: false });
@@ -95,7 +96,8 @@ export const useHistoriqueStock = () => {
       const transformedData = (data || []).map(item => ({
         ...item,
         produit: item.produit?.[0] || { id: null, nom: 'Produit supprimé', code: 'N/A' },
-        user: item.users?.[0] || null,
+        user: item.users || null,
+        ajout_produit: item.ajout_produit?.[0] || null,
         produit_supprime: item.produit_id === null
       }));
       
