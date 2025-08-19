@@ -21,7 +21,7 @@ export default function HistoriqueStockPage() {
       setFilteredHistorique(historique);
     } else {
       const result = await getHistoriqueByType(type as 'AJOUT' | 'VENTE' | 'RETRAIT_MANUEL');
-      if (result.success) {
+      if (result.success && result.data) {
         setFilteredHistorique(result.data);
       }
     }
@@ -30,7 +30,7 @@ export default function HistoriqueStockPage() {
   const handleDateFilter = async () => {
     if (startDate && endDate) {
       const result = await getHistoriqueByDateRange(startDate, endDate);
-      if (result.success) {
+      if (result.success && result.data) {
         setFilteredHistorique(result.data);
       }
     } else {

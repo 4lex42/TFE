@@ -134,7 +134,7 @@ export const useHistoriqueStock = () => {
     }
   };
 
-  const getHistoriqueByType = async (typeMouvement: 'AJOUT' | 'VENTE' | 'RETRAIT_MANUEL' | 'SUPPRESSION') => {
+  const getHistoriqueByType = async (typeMouvement: 'AJOUT' | 'VENTE' | 'RETRAIT_MANUEL' | 'SUPPRESSION'): Promise<{ success: true; data: HistoriqueStock[] } | { success: false; error: string }> => {
     try {
       const { data, error } = await supabase
         .from('historique_stock')
@@ -161,7 +161,7 @@ export const useHistoriqueStock = () => {
     }
   };
 
-  const getHistoriqueByDateRange = async (startDate: string, endDate: string) => {
+  const getHistoriqueByDateRange = async (startDate: string, endDate: string): Promise<{ success: true; data: HistoriqueStock[] } | { success: false; error: string }> => {
     try {
       const { data, error } = await supabase
         .from('historique_stock')
