@@ -42,11 +42,6 @@ export default function Navbar() {
           <div className="text-2xl font-bold text-blue-600">Star </div>
           <div className="text-2xl font-bold text-yellow-600">Mobile</div>
           <ul className="flex space-x-6 text-sm font-medium ml-10">
-            {/* <li>
-              <Link href="/" className="text-gray-700 hover:text-blue-600">
-                Accueil
-              </Link>
-            </li> */}
             <li>
               <Link href="/dashboard" className="text-gray-700 hover:text-blue-600">
                 Dashboard
@@ -67,11 +62,6 @@ export default function Navbar() {
                 Ventes
               </Link>
             </li>
-            {/* <li>
-              <Link href="/importPrix" className="text-gray-700 hover:text-blue-600">
-                Import
-              </Link>
-            </li> */}
             {userProfile?.role === 'admin' && (
               <>
                 <li>
@@ -79,11 +69,6 @@ export default function Navbar() {
                     Admin
                   </Link>
                 </li>
-                {/* <li>
-                  <Link href="/admin/historique-stock" className="text-gray-700 hover:text-blue-600">
-                    Historique Stocks
-                  </Link>
-                </li> */}
               </>
             )}
           </ul>
