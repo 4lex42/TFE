@@ -6,6 +6,7 @@ import { PredictionChart } from '../../components/PredictionChart';
 import { usePredictions } from '../../hooks/usePredictions';
 import DashboardChart from '../../components/DashboardChart';
 import ProduitPredictionChart from '../../components/ProduitPredictionChart';
+import './dashboard.css';
 
 export default function DashboardPage() {
   const { produits, loading, error } = useProduits();
@@ -76,6 +77,8 @@ export default function DashboardPage() {
           <PredictionChartWrapper productId={produitsEnAlerte[0].id} />
         </div>
       )} */}
+
+
 
       {/* Graphique des mouvements de stock par produit */}
       <DashboardChart onProduitSelect={setSelectedProduitForPrediction} />

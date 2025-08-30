@@ -14,7 +14,8 @@ export const useHistoriqueStock = () => {
         .select(`
           *,
           produit(id, nom, code),
-          users(id, name, email)
+          users(id, name, email),
+          ajout_produit:ajout_produits(id, date, fournisseur, quantity, type, note)
         `)
         .order('created_at', { ascending: false });
 
@@ -39,6 +40,7 @@ export const useHistoriqueStock = () => {
               name: item.user_name,
               email: item.user_email
             },
+            ajout_produit: item.ajout_produit || null,
             produit_supprime: item.produit_id === null
           };
         } else {
@@ -47,6 +49,7 @@ export const useHistoriqueStock = () => {
             ...item,
             produit: item.produit || { id: null, nom: 'Produit supprimé', code: 'N/A' },
             user: item.users || null,
+            ajout_produit: item.ajout_produit || null,
             produit_supprime: item.produit_id === null
           };
         }

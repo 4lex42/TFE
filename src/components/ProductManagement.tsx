@@ -322,7 +322,7 @@ export const ProductManagement: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="p-6">
       {message && (
         <div className={`mb-4 p-4 rounded ${
           message.type === 'success' ? 'bg-green-100 text-green-700' : 
@@ -346,12 +346,18 @@ export const ProductManagement: React.FC = () => {
       )}
 
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gestion des Produits</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Gestion des Produits</h1>
+          <p className="text-gray-600 mt-1">Ajoutez, modifiez et surveillez vos produits</p>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowAddForm(true)}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-sm flex items-center gap-2"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
             Ajouter un Produit
           </button>
         </div>
@@ -370,7 +376,7 @@ export const ProductManagement: React.FC = () => {
             placeholder="Rechercher par nom, code ou description..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            className="block w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
           />
           {searchTerm && (
             <button
@@ -398,11 +404,11 @@ export const ProductManagement: React.FC = () => {
 
       {/* Filtres par catégories */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="font-medium">Filtrer par catégories</span>
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-medium text-gray-700">Filtrer par catégories</span>
           <button
             onClick={() => setShowCategoryFilters(s => !s)}
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm text-blue-600 hover:text-blue-800 hover:underline transition-colors"
           >
             {showCategoryFilters ? 'Masquer' : 'Afficher'}
           </button>
@@ -447,30 +453,30 @@ export const ProductManagement: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={selectAllDisplayedCategories}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1 rounded border"
-                disabled={displayedCategories.length === 0}
-              >
-                Tout sélectionner (affichées)
-              </button>
-              <button
-                onClick={clearCategoryFilters}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-1 rounded border"
-                disabled={categoryFilterIds.length === 0 && categoryFilterSearch.trim() === ''}
-              >
-                Effacer les filtres
-              </button>
-              <span className="text-xs text-gray-600">
-                {categoryFilterIds.length > 0 ? `${categoryFilterIds.length} sélectionnée${categoryFilterIds.length > 1 ? 's' : ''}` : 'Aucune sélection'}
-              </span>
-            </div>
+                         <div className="flex items-center gap-2">
+               <button
+                 onClick={selectAllDisplayedCategories}
+                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-2 rounded-lg border transition-colors"
+                 disabled={displayedCategories.length === 0}
+               >
+                 Tout sélectionner (affichées)
+               </button>
+               <button
+                 onClick={clearCategoryFilters}
+                 className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm px-3 py-2 rounded-lg border transition-colors"
+                 disabled={categoryFilterIds.length === 0 && categoryFilterSearch.trim() === ''}
+               >
+                 Effacer les filtres
+               </button>
+               <span className="text-xs text-gray-600">
+                 {categoryFilterIds.length > 0 ? `${categoryFilterIds.length} sélectionnée${categoryFilterIds.length > 1 ? 's' : ''}` : 'Aucune sélection'}
+               </span>
+             </div>
 
-            {categoriesLoading ? (
-              <div className="text-sm text-gray-500">Chargement des catégories...</div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-auto p-2 border rounded">
+                         {categoriesLoading ? (
+               <div className="text-sm text-gray-500">Chargement des catégories...</div>
+             ) : (
+               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-48 overflow-auto p-3 border border-gray-200 rounded-lg bg-gray-50">
                 {displayedCategories.map((categorie) => (
                   <label key={categorie.id} className="flex items-center space-x-2 cursor-pointer text-sm">
                     <input
@@ -639,9 +645,9 @@ export const ProductManagement: React.FC = () => {
         </div>
       )}
 
-      {/* En-tête du tableau */}
-      <div className="bg-gray-100 p-4 rounded-t border-b">
-        <div className="grid grid-cols-13 gap-4 text-sm font-medium text-gray-700">
+             {/* En-tête du tableau */}
+       <div className="bg-gray-50 p-4 rounded-t-lg border-b border-gray-200">
+         <div className="grid grid-cols-13 gap-4 text-sm font-medium text-gray-700">
           <div className="col-span-2">Image</div>
           <div className="col-span-2">Nom</div>
           <div className="col-span-1">Code</div>
@@ -654,10 +660,10 @@ export const ProductManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Liste des produits */}
-      <div className="space-y-1">
-        {filteredProduits.map((produit) => (
-          <div key={produit.id} className="border rounded p-4">
+             {/* Liste des produits */}
+       <div className="space-y-2">
+         {filteredProduits.map((produit) => (
+           <div key={produit.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
             {editingProduct?.id === produit.id ? (
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <div className="grid grid-cols-13 gap-4">
@@ -858,31 +864,31 @@ export const ProductManagement: React.FC = () => {
                 <div className="col-span-2 flex gap-2">
                   <button
                     onClick={() => handleShowHistorique(produit)}
-                    className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                    className="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600 transition-colors"
                     title="Voir l'historique"
                   >
-                    📊
+                    Historique
                   </button>
                   <button
                     onClick={() => handleShowTvaModal(produit)}
-                    className="bg-purple-500 text-white px-2 py-1 rounded text-xs hover:bg-purple-600"
+                    className="bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600 transition-colors"
                     title="Modifier TVA"
                   >
-                    💰
+                    TVA
                   </button>
                   <button
                     onClick={() => handleEdit(produit)}
-                    className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                    className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
                     title="Modifier"
                   >
-                    ✏️
+                    Modifier
                   </button>
                   <button
                     onClick={() => handleDelete(produit.id)}
-                    className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                    className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition-colors"
                     title="Supprimer"
                   >
-                    🗑️
+                    Supprimer
                   </button>
                 </div>
               </div>
@@ -907,11 +913,19 @@ export const ProductManagement: React.FC = () => {
         ))}
       </div>
 
-      {filteredProduits.length === 0 && !loading && (
-        <div className="text-center py-8 text-gray-500">
-          {searchTerm || categoryFilterIds.length > 0 ? 'Aucun produit trouvé pour vos filtres' : 'Aucun produit trouvé'}
-        </div>
-      )}
+             {filteredProduits.length === 0 && !loading && (
+         <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
+           <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+           </svg>
+           <p className="text-lg font-medium mb-2">
+             {searchTerm || categoryFilterIds.length > 0 ? 'Aucun produit trouvé' : 'Aucun produit'}
+           </p>
+           <p className="text-sm">
+             {searchTerm || categoryFilterIds.length > 0 ? 'Essayez de modifier vos filtres de recherche' : 'Commencez par ajouter votre premier produit'}
+           </p>
+         </div>
+       )}
 
       {/* Section des prédictions */}
       {selectedProduct && (

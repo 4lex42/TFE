@@ -206,7 +206,7 @@ describe('FournisseursManagement', () => {
       await user.type(nomInput, 'Fournisseur A Modifié');
       
       // Save changes
-      const saveButton = screen.getByText('✅');
+      const saveButton = screen.getByText('Sauvegarder');
       await user.click(saveButton);
       
       expect(mockUpdateFournisseur).toHaveBeenCalledWith('1', {
@@ -226,7 +226,7 @@ describe('FournisseursManagement', () => {
       await user.click(editButtons[0]);
       
       // Cancel edit
-      const cancelButton = screen.getByText('❌');
+      const cancelButton = screen.getByText('Annuler');
       await user.click(cancelButton);
       
       // Should be back to view mode

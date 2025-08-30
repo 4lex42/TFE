@@ -196,18 +196,18 @@ export const FournisseursManagement: React.FC = () => {
                     <div className="col-span-2 flex items-center gap-2">
                       <button
                         type="submit"
-                        className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                        className="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600 transition-colors"
                         title="Sauvegarder"
                       >
-                        ✅
+                        Sauvegarder
                       </button>
                       <button
                         type="button"
                         onClick={handleCancelEdit}
-                        className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600"
+                        className="bg-gray-500 text-white px-3 py-1 rounded text-xs hover:bg-gray-600 transition-colors"
                         title="Annuler"
                       >
-                        ❌
+                        Annuler
                       </button>
                     </div>
                   </form>
@@ -221,17 +221,17 @@ export const FournisseursManagement: React.FC = () => {
                     <div className="col-span-2 flex items-center gap-2">
                       <button
                         onClick={() => handleEdit(f)}
-                        className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                        className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
                         title="Modifier"
                       >
-                        ✏️
+                        Modifier
                       </button>
                       <button
                         onClick={() => handleDelete(f.id)}
-                        className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
+                        className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition-colors"
                         title="Supprimer"
                       >
-                        🗑️
+                        Supprimer
                       </button>
                     </div>
                   </>

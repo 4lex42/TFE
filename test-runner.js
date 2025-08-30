@@ -36,8 +36,8 @@ const testConfigs = [
 // Function to run tests
 function runTests(config) {
   return new Promise((resolve, reject) => {
-    console.log(`\n📋 ${config.name}`);
-    console.log(`📝 ${config.description}`);
+    console.log(`\n${config.name}`);
+    console.log(`${config.description}`);
     console.log('─'.repeat(50));
 
     const child = spawn(config.command, config.args, {
@@ -48,16 +48,16 @@ function runTests(config) {
 
     child.on('close', (code) => {
       if (code === 0) {
-        console.log(`✅ ${config.name} completed successfully\n`);
+        console.log(`${config.name} completed successfully\n`);
         resolve();
       } else {
-        console.log(`❌ ${config.name} failed with code ${code}\n`);
+                  console.log(`${config.name} failed with code ${code}\n`);
         reject(new Error(`${config.name} failed`));
       }
     });
 
     child.on('error', (error) => {
-      console.error(`❌ Error running ${config.name}:`, error.message);
+              console.error(`Error running ${config.name}:`, error.message);
       reject(error);
     });
   });
@@ -77,11 +77,11 @@ async function runAllTests() {
   }
 
   // Print summary
-  console.log('\n📊 Test Results Summary');
+      console.log('\nTest Results Summary');
   console.log('─'.repeat(50));
   
   results.forEach(result => {
-    const status = result.status === 'PASSED' ? '✅' : '❌';
+            const status = result.status === 'PASSED' ? 'PASSED' : 'FAILED';
     console.log(`${status} ${result.name}: ${result.status}`);
     if (result.error) {
       console.log(`   Error: ${result.error}`);
@@ -91,7 +91,7 @@ async function runAllTests() {
   const passedCount = results.filter(r => r.status === 'PASSED').length;
   const totalCount = results.length;
   
-  console.log(`\n📈 Overall: ${passedCount}/${totalCount} test suites passed`);
+      console.log(`\nOverall: ${passedCount}/${totalCount} test suites passed`);
   
   if (passedCount === totalCount) {
     console.log('🎉 All tests passed successfully!');
@@ -109,7 +109,7 @@ async function runSpecificTest(testType) {
   );
   
   if (!config) {
-    console.log('❌ Test type not found. Available types:');
+          console.log('Test type not found. Available types:');
     testConfigs.forEach(c => console.log(`   - ${c.name}`));
     process.exit(1);
   }
@@ -119,7 +119,7 @@ async function runSpecificTest(testType) {
     console.log('🎉 Test completed successfully!');
     process.exit(0);
   } catch (error) {
-    console.log('❌ Test failed.');
+    console.log('Test failed.');
     process.exit(1);
   }
 }

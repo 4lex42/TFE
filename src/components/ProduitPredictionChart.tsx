@@ -126,21 +126,40 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
     // Créer un map des dates et stocks
     const stockParDate = new Map<string, number>();
     
-    // Initialiser avec le stock actuel
-    stockParDate.set(new Date().toISOString().split('T')[0], produit.quantity);
+    // Trouver la création du produit (premier mouvement AJOUT avec note de création)
+    const creationMouvement = historiqueProduit.find(m => 
+      m.type_mouvement === 'AJOUT' && 
+      m.note && 
+      m.note.includes('Création du nouveau produit')
+    );
+    
+    // Quantité initiale à la création
+    const quantiteInitiale = creationMouvement ? creationMouvement.quantite : 0;
+    
+    // Calculer le stock à chaque date en partant de la quantité initiale
+    let stockCumulatif = quantiteInitiale;
+    
+    // Trier les mouvements chronologiquement
+    const mouvementsTries = historiqueProduit
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-    // Calculer le stock à chaque date
-    let stockCumulatif = produit.quantity;
-    const dates = historiqueProduit
-      .map(m => new Date(m.created_at))
-      .sort((a, b) => a.getTime() - b.getTime());
+    // Grouper les mouvements par date
+    const mouvementsParDate = new Map<string, any[]>();
+    
+    mouvementsTries.forEach(mouvement => {
+      const dateStr = new Date(mouvement.created_at).toISOString().split('T')[0];
+      if (!mouvementsParDate.has(dateStr)) {
+        mouvementsParDate.set(dateStr, []);
+      }
+      mouvementsParDate.get(dateStr)!.push(mouvement);
+    });
 
-    dates.forEach(date => {
-      const dateStr = date.toISOString().split('T')[0];
-      const mouvements = historiqueProduit.filter(m => 
-        new Date(m.created_at).toISOString().split('T')[0] === dateStr
-      );
-
+    // Appliquer les mouvements chronologiquement
+    const datesTriees = Array.from(mouvementsParDate.keys()).sort();
+    
+    datesTriees.forEach(dateStr => {
+      const mouvements = mouvementsParDate.get(dateStr) || [];
+      
       mouvements.forEach(mouvement => {
         switch (mouvement.type_mouvement) {
           case 'AJOUT':
@@ -157,12 +176,26 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
             break;
         }
       });
-
+      
       stockParDate.set(dateStr, Math.max(0, stockCumulatif));
     });
+    
+    // Ajouter le stock actuel pour aujourd'hui si pas déjà présent
+    const aujourdhui = new Date().toISOString().split('T')[0];
+    if (!stockParDate.has(aujourdhui)) {
+      stockParDate.set(aujourdhui, produit.quantity);
+    }
+
+    // Vérifier que le calcul arrive au stock actuel
+    const dernierStockCalcule = stockCumulatif;
+    if (Math.abs(dernierStockCalcule - produit.quantity) > 0.1) {
+      console.warn(`Stock calculé (${dernierStockCalcule}) ne correspond pas au stock actuel (${produit.quantity}) pour le produit ${produit.nom}. Quantité initiale: ${quantiteInitiale}`);
+    }
+
+    // Calcul terminé
 
     // Convertir en points pour la régression
-    const sortedDates = Array.from(stockParDate.keys()).sort();
+    const sortedDates = Array.from(stockParDate.keys()).sort(); // Tri chronologique pour l'affichage
     const startDate = new Date(sortedDates[0]);
     
     const points: Point[] = sortedDates.map(dateStr => {

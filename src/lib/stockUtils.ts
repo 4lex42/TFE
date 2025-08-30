@@ -70,10 +70,10 @@ export const enregistrerMouvementStock = async (
       throw error;
     }
 
-    console.log(`✅ Historique enregistré: ${typeMouvement} pour le produit ${produitId} (${quantite})`);
+    console.log(`Historique enregistré: ${typeMouvement} pour le produit ${produitId} (${quantite})`);
     return { success: true };
   } catch (err) {
-    console.error('❌ Erreur lors de l\'enregistrement du mouvement de stock:', err);
+    console.error('Erreur lors de l\'enregistrement du mouvement de stock:', err);
     return { 
       success: false, 
       error: err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement du mouvement' 
@@ -158,10 +158,10 @@ export const enregistrerAjoutStockViaAjoutProduits = async (
       throw error;
     }
 
-    console.log(`✅ Historique enregistré: AJOUT via ajout_produits ${ajoutProduitId} (${quantite}) pour le produit ${currentProduitId || 'inconnu'}`);
+    console.log(`Historique enregistré: AJOUT via ajout_produits ${ajoutProduitId} (${quantite}) pour le produit ${currentProduitId || 'inconnu'}`);
     return { success: true };
   } catch (err) {
-    console.error('❌ Erreur lors de l\'enregistrement du mouvement de stock:', err);
+    console.error('Erreur lors de l\'enregistrement du mouvement de stock:', err);
     return { 
       success: false, 
       error: err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement du mouvement' 
