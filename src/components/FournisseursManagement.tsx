@@ -10,6 +10,10 @@ export const FournisseursManagement: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ nom: '', email: '', telephone: '', note: '' });
+  
+  // État pour la pagination des fournisseurs
+  const [currentPage, setCurrentPage] = useState(1);
+  const [fournisseursPerPage, setFournisseursPerPage] = useState(10);
 
   const filtered = useMemo(() => {
     const t = search.toLowerCase().trim();
@@ -20,6 +24,45 @@ export const FournisseursManagement: React.FC = () => {
       (f.telephone || '').toLowerCase().includes(t)
     );
   }, [fournisseurs, search]);
+
+  // Fonctions de pagination
+  const totalPages = Math.ceil(filtered.length / fournisseursPerPage);
+  const indexOfLastFournisseur = currentPage * fournisseursPerPage;
+  const indexOfFirstFournisseur = indexOfLastFournisseur - fournisseursPerPage;
+  const currentFournisseurs = filtered.slice(indexOfFirstFournisseur, indexOfLastFournisseur);
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    // Scroll vers le haut de la liste
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleFournisseursPerPageChange = (newFournisseursPerPage: number) => {
+    setFournisseursPerPage(newFournisseursPerPage);
+    setCurrentPage(1); // Retour à la première page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Réinitialiser la pagination quand le nombre de fournisseurs change
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [filtered.length, currentPage, totalPages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,12 +185,35 @@ export const FournisseursManagement: React.FC = () => {
 
       {/* Liste */}
       <div className="bg-white border rounded">
-        <div className="grid grid-cols-12 gap-3 px-4 py-2 text-sm font-medium text-gray-700 border-b bg-gray-50 rounded-t">
-          <div className="col-span-2">Nom</div>
-          <div className="col-span-3">Email</div>
-          <div className="col-span-2">Téléphone</div>
-          <div className="col-span-3">Note</div>
-          <div className="col-span-2">Actions</div>
+        <div className="px-4 py-3 border-b bg-gray-50 rounded-t">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold text-gray-800">Fournisseurs</h3>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-gray-600">Afficher par page:</label>
+                <select
+                  value={fournisseursPerPage}
+                  onChange={(e) => handleFournisseursPerPageChange(Number(e.target.value))}
+                  className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+              <div className="text-sm text-gray-600">
+                Affichage {indexOfFirstFournisseur + 1}-{Math.min(indexOfLastFournisseur, filtered.length)} sur {filtered.length} fournisseurs
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-12 gap-3 text-sm font-medium text-gray-700">
+            <div className="col-span-2">Nom</div>
+            <div className="col-span-3">Email</div>
+            <div className="col-span-2">Téléphone</div>
+            <div className="col-span-3">Note</div>
+            <div className="col-span-2">Actions</div>
+          </div>
         </div>
         {loading ? (
           <div className="p-4 text-sm text-gray-500">Chargement...</div>
@@ -157,7 +223,7 @@ export const FournisseursManagement: React.FC = () => {
           <div className="p-4 text-sm text-gray-500">Aucun fournisseur trouvé</div>
         ) : (
           <div className="divide-y">
-            {filtered.map(f => (
+            {currentFournisseurs.map(f => (
               <div key={f.id} className="grid grid-cols-12 gap-3 px-4 py-2 items-center">
                 {editingId === f.id ? (
                   // Mode édition
@@ -238,6 +304,79 @@ export const FournisseursManagement: React.FC = () => {
                 )}
               </div>
             ))}
+
+            {/* Contrôles de pagination */}
+            {totalPages > 1 && (
+              <div className="px-4 py-3 border-t bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Page {currentPage} sur {totalPages}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={currentPage === 1}
+                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        currentPage === 1
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Précédent
+                    </button>
+                    
+                    {/* Numéros de page */}
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalPages }, (_, index) => {
+                        const pageNumber = index + 1;
+                        // Afficher seulement quelques pages autour de la page actuelle
+                        if (
+                          pageNumber === 1 ||
+                          pageNumber === totalPages ||
+                          (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                        ) {
+                          return (
+                            <button
+                              key={pageNumber}
+                              onClick={() => handlePageChange(pageNumber)}
+                              className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                pageNumber === currentPage
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}
+                            >
+                              {pageNumber}
+                            </button>
+                          );
+                        } else if (
+                          pageNumber === currentPage - 2 ||
+                          pageNumber === currentPage + 2
+                        ) {
+                          return (
+                            <span key={pageNumber} className="px-2 text-gray-400">
+                              ...
+                            </span>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                      className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        currentPage === totalPages
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Suivant
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

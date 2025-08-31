@@ -33,14 +33,7 @@ interface MouvementTemporel {
   stockTotal: number;
 }
 
-interface ProduitMouvements {
-  nom: string;
-  code: string;
-  ajouts: number;
-  ventes: number;
-  retraits: number;
-  stockActuel: number;
-}
+
 
 interface DashboardChartProps {
   onProduitSelect?: (produitId: string) => void;
@@ -51,7 +44,7 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
   const { produits } = useProduits();
   const [selectedProduitId, setSelectedProduitId] = useState<string>('all');
   const [mouvementsTemporels, setMouvementsTemporels] = useState<MouvementTemporel[]>([]);
-  const [produitsMouvements, setProduitsMouvements] = useState<ProduitMouvements[]>([]);
+  const [displayedCount, setDisplayedCount] = useState(10);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'global' | 'produit'>('global');
 
@@ -91,7 +84,6 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
               case 'RETRAIT_MANUEL':
                 dateData.retraits += mouvement.quantite;
                 break;
-
             }
           }
         });
@@ -153,7 +145,6 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
                 case 'RETRAIT_MANUEL':
                   dateData.retraits += mouvement.quantite;
                   break;
-
               }
             }
           });
@@ -182,50 +173,15 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
         }
       }
 
-      // Toujours calculer les statistiques par produit pour la vue d'ensemble
-      const mouvementsParProduit = new Map<string, ProduitMouvements>();
 
-      produits.forEach(produit => {
-        mouvementsParProduit.set(produit.id, {
-          nom: produit.nom,
-          code: produit.code,
-          ajouts: 0,
-          ventes: 0,
-          retraits: 0,
-          stockActuel: produit.quantity
-        });
-      });
-
-      historique.forEach(mouvement => {
-        if (mouvement.produit_id) {
-          const produit = mouvementsParProduit.get(mouvement.produit_id);
-          if (produit) {
-            switch (mouvement.type_mouvement) {
-              case 'AJOUT':
-                produit.ajouts += mouvement.quantite;
-                break;
-              case 'VENTE':
-                produit.ventes += mouvement.quantite;
-                break;
-              case 'RETRAIT_MANUEL':
-                produit.retraits += mouvement.quantite;
-                break;
-
-            }
-          }
-        }
-      });
-
-      const resultatProduits = Array.from(mouvementsParProduit.values())
-        .sort((a, b) => b.stockActuel - a.stockActuel)
-        .slice(0, 10);
-
-      setProduitsMouvements(resultatProduits);
       setLoading(false);
     }
   }, [historique, produits, selectedProduitId, viewMode]);
 
-
+  // Réinitialiser la pagination quand les données changent
+  useEffect(() => {
+    setDisplayedCount(10);
+  }, [mouvementsTemporels, selectedProduitId, viewMode]);
 
   if (loading) {
     return (
@@ -302,7 +258,6 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
         pointRadius: 4,
         pointHoverRadius: 6,
       },
-
       {
         label: 'Stock Total',
         data: mouvementsTemporels.map(m => m.stockTotal).reverse(),
@@ -481,6 +436,19 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
     }
   };
 
+  // Fonctions de pagination
+  const handleShowMore = () => {
+    setDisplayedCount(prev => Math.min(prev + 20, mouvementsTemporels.length));
+  };
+
+
+
+
+
+  // Données paginées pour le tableau
+  const displayedMouvements = mouvementsTemporels.slice(0, displayedCount);
+  const hasMoreMouvements = displayedCount < mouvementsTemporels.length;
+
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
@@ -537,9 +505,9 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
                   ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
                   : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200 hover:border-blue-300'
               }`}
-                          >
-                Vue Globale
-              </button>
+            >
+              Vue Globale
+            </button>
             <button
               onClick={() => {
                 if (selectedProduitId !== 'all') {
@@ -552,49 +520,49 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
                   : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200 hover:border-green-300'
               }`}
               disabled={selectedProduitId === 'all'}
-                          >
-                Vue Produit
-              </button>
+            >
+              Vue Produit
+            </button>
           </div>
         </div>
       </div>
       
-            {/* Statistiques rapides */}
+      {/* Statistiques rapides */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-green-50 p-4 rounded-lg border border-green-200 shadow-sm hover:shadow-md transition-all duration-200">
-                      <div className="mb-3">
-              <div className="text-green-800 font-semibold text-sm">Total Ajouts</div>
-            </div>
-                      <div className="text-3xl font-bold text-green-600">{totalAjoutsComplet.toLocaleString()}</div>
-                      <div className="text-green-600 text-xs mt-1">Mouvements d'ajout (incluant stocks initiaux)</div>
+          <div className="mb-3">
+            <div className="text-green-800 font-semibold text-sm">Total Ajouts</div>
+          </div>
+          <div className="text-3xl font-bold text-green-600">{totalAjoutsComplet.toLocaleString()}</div>
+          <div className="text-green-600 text-xs mt-1">Mouvements d'ajout (incluant stocks initiaux)</div>
         </div>
         
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200 shadow-sm hover:shadow-md transition-all duration-200">
-                      <div className="mb-3">
-              <div className="text-blue-800 font-semibold text-sm">Total Ventes</div>
-            </div>
+          <div className="mb-3">
+            <div className="text-blue-800 font-semibold text-sm">Total Ventes</div>
+          </div>
           <div className="text-3xl font-bold text-blue-600">{totalVentes.toLocaleString()}</div>
           <div className="text-blue-600 text-xs mt-1">Mouvements de vente</div>
         </div>
         
         <div className="bg-red-50 p-4 rounded-lg border border-red-200 shadow-sm hover:shadow-md transition-all duration-200">
-                      <div className="mb-3">
-              <div className="text-red-800 font-semibold text-sm">Total Retraits</div>
-            </div>
+          <div className="mb-3">
+            <div className="text-red-800 font-semibold text-sm">Total Retraits</div>
+          </div>
           <div className="text-3xl font-bold text-red-600">{totalRetraits.toLocaleString()}</div>
           <div className="text-red-600 text-xs mt-1">Mouvements de retrait</div>
         </div>
         
         <div className="bg-purple-50 p-4 rounded-lg border border-purple-200 shadow-sm hover:shadow-md transition-all duration-200">
-                      <div className="mb-3">
-              <div className="text-purple-800 font-semibold text-sm">
+          <div className="mb-3">
+            <div className="text-purple-800 font-semibold text-sm">
               {selectedProduitId !== 'all' ? 'Stock Produit' : 'Stock Total'}
             </div>
-            </div>
+          </div>
           <div className="text-3xl font-bold text-purple-600">{stockActuel.toLocaleString()}</div>
-                      <div className="text-purple-600 text-xs mt-1">
-              {selectedProduitId !== 'all' ? 'Quantité disponible' : 'Quantité totale'}
-            </div>
+          <div className="text-purple-600 text-xs mt-1">
+            {selectedProduitId !== 'all' ? 'Quantité disponible' : 'Quantité totale'}
+          </div>
         </div>
       </div>
 
@@ -611,7 +579,19 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
 
       {/* Tableau détaillé par date */}
       <div className="mt-6">
-        <h3 className="text-lg font-semibold mb-3">Détail par Date</h3>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">Détail par Date</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {mouvementsTemporels.length} date{mouvementsTemporels.length > 1 ? 's' : ''} de mouvements de stock
+            </p>
+          </div>
+          {mouvementsTemporels.length > 10 && (
+            <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+              Pagination activée
+            </div>
+          )}
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full bg-white border border-gray-200">
             <thead className="bg-gray-50">
@@ -620,12 +600,11 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ajouts</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ventes</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Retraits</th>
-                <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Suppressions</th>
                 <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Stock Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {mouvementsTemporels.map((mouvement, index) => (
+              {displayedMouvements.map((mouvement, index) => (
                 <tr key={index} className="hover:bg-gray-50">
                   <td className="px-4 py-2 font-medium text-gray-900">
                     {mouvement.date}
@@ -640,14 +619,9 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
                       {mouvement.ventes}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-center">
+                  <td className="px-2 text-center">
                     <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
                       {mouvement.retraits}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                      {mouvement.suppressions}
                     </span>
                   </td>
                   <td className="px-4 py-2 text-center">
@@ -662,67 +636,35 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
             </tbody>
           </table>
         </div>
+        
+        {/* Contrôles de pagination */}
+        <div className="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="text-sm text-gray-600">
+            Affichage de <span className="font-semibold">{displayedMouvements.length}</span> sur <span className="font-semibold">{mouvementsTemporels.length}</span> dates
+            {hasMoreMouvements && (
+              <span className="ml-2 text-blue-600">+{mouvementsTemporels.length - displayedCount} autres disponibles</span>
+            )}
+          </div>
+          
+          {hasMoreMouvements ? (
+            <button
+              onClick={handleShowMore}
+              className="inline-flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-medium rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-200 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              Afficher plus
+            </button>
+          ) : (
+            <div className="text-sm text-gray-500 font-medium">
+              Toutes les dates sont affichées
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Vue d'ensemble des produits (si vue globale) */}
-      {viewMode === 'global' && (
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-3">Vue d'ensemble des Produits</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Produit</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ajouts</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Ventes</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Retraits</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Suppressions</th>
-                  <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Stock Actuel</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {produitsMouvements.map((produit, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">
-                      <div>
-                        <div className="font-medium text-gray-900">{produit.nom}</div>
-                        <div className="text-sm text-gray-500">{produit.code}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                        {produit.ajouts}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {produit.ventes}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                        {produit.retraits}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                        {produit.suppressions}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        produit.stockActuel > 0 ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {produit.stockActuel}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

@@ -39,36 +39,27 @@ export const useUsers = () => {
 
   const createUser = async (userData: CreateUserData) => {
     try {
-      // Créer l'utilisateur dans auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password,
-        email_confirm: true,
-        user_metadata: {
-          name: userData.name,
-          role: userData.role,
-        }
+      // Utiliser l'endpoint API côté serveur pour créer l'utilisateur
+      const response = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
       });
 
-      if (authError) throw authError;
+      const result = await response.json();
 
-      // Ajouter les informations dans la table users
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert([{
-            id: authData.user.id,
-            email: userData.email,
-            name: userData.name,
-            role: userData.role,
-            status: 'pending', // Nouveaux utilisateurs sont en attente d'approbation
-          }]);
-
-        if (profileError) throw profileError;
+      if (!response.ok) {
+        throw new Error(result.error || 'Erreur lors de la création de l\'utilisateur');
       }
 
-      await fetchUsers();
-      return { success: true, data: authData };
+      if (result.success) {
+        await fetchUsers(); // Rafraîchir la liste des utilisateurs
+        return { success: true, data: result.data };
+      } else {
+        throw new Error(result.error || 'Erreur lors de la création de l\'utilisateur');
+      }
     } catch (err) {
       return { 
         success: false, 
@@ -101,35 +92,30 @@ export const useUsers = () => {
 
   const updateUserStatus = async (userId: string, newStatus: 'pending' | 'approved' | 'rejected') => {
     try {
-      // Récupérer les informations de l'utilisateur avant la mise à jour
-      const user = users.find(u => u.id === userId);
-      if (!user) {
-        throw new Error('Utilisateur non trouvé');
+      // Utiliser l'endpoint API côté serveur pour mettre à jour le statut
+      const response = await fetch('/api/update-user-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, newStatus }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erreur lors de la mise à jour du statut');
       }
 
-      // Mettre à jour le statut
-      const { error } = await supabase
-        .from('users')
-        .update({ status: newStatus })
-        .eq('id', userId);
-
-      if (error) throw error;
-
-      // Mettre à jour l'état local
-      setUsers(users.map(u => 
-        u.id === userId ? { ...u, status: newStatus } : u
-      ));
-
-      // Envoyer un email selon le statut
-      if (newStatus === 'rejected') {
-        // Envoyer un email de rejet
-        await sendRejectionEmail(user.email, user.name);
-      } else if (newStatus === 'approved') {
-        // Envoyer un email d'approbation
-        await sendApprovalEmail(user.email, user.name);
+      if (result.success) {
+        // Mettre à jour l'état local
+        setUsers(users.map(u => 
+          u.id === userId ? { ...u, status: newStatus } : u
+        ));
+        return { success: true };
+      } else {
+        throw new Error(result.error || 'Erreur lors de la mise à jour du statut');
       }
-
-      return { success: true };
     } catch (err) {
       return { 
         success: false, 
@@ -138,41 +124,7 @@ export const useUsers = () => {
     }
   };
 
-  const sendRejectionEmail = async (email: string, name: string | null) => {
-    try {
-      // Utiliser Supabase Auth pour envoyer un email de rejet
-      const { error } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: email,
-      });
 
-      if (error) {
-        console.error('Erreur lors de l\'envoi de l\'email de rejet:', error);
-      } else {
-        console.log('Email de rejet envoyé avec succès à:', email);
-      }
-    } catch (err) {
-      console.error('Erreur lors de l\'envoi de l\'email de rejet:', err);
-    }
-  };
-
-  const sendApprovalEmail = async (email: string, name: string | null) => {
-    try {
-      // Utiliser Supabase Auth pour envoyer un email d'approbation
-      const { error } = await supabase.auth.admin.generateLink({
-        type: 'signup',
-        email: email,
-      });
-
-      if (error) {
-        console.error('Erreur lors de l\'envoi de l\'email d\'approbation:', error);
-      } else {
-        console.log('Email d\'approbation envoyé avec succès à:', email);
-      }
-    } catch (err) {
-      console.error('Erreur lors de l\'envoi de l\'email d\'approbation:', err);
-    }
-  };
 
   const deleteUser = async (userId: string) => {
     try {

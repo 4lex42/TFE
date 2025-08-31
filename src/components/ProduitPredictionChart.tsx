@@ -14,6 +14,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { useHistoriqueStock } from '../hooks/useHistoriqueStock';
 import { useProduits } from '../hooks/useProduits';
+import * as math from 'mathjs';
 
 ChartJS.register(
   CategoryScale,
@@ -48,10 +49,13 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
   const { produits } = useProduits();
   const [predictionDays, setPredictionDays] = useState<number>(30);
   const [loading, setLoading] = useState(false);
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [showTrendLine, setShowTrendLine] = useState(true);
 
-  // Calculer la méthode des moindres carrés
-  const calculateLeastSquares = (points: Point[]): PredictionResult => {
-    if (points.length < 2) {
+  // Nouvelle fonction pour calculer une régression polynomiale (degré 2)
+  const calculatePolynomialRegression = (points: Point[], degree: number = 2): PredictionResult => {
+    if (points.length < degree + 1) {
       return {
         slope: 0,
         intercept: 0,
@@ -63,47 +67,73 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
     }
 
     const n = points.length;
-    const sumX = points.reduce((sum, p) => sum + p.x, 0);
-    const sumY = points.reduce((sum, p) => sum + p.y, 0);
-    const sumXY = points.reduce((sum, p) => sum + p.x * p.y, 0);
-    const sumXX = points.reduce((sum, p) => sum + p.x * p.x, 0);
+    const X: number[][] = [];
+    const Y: number[] = [];
 
-    // Calculer la pente et l'intercept
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
+    points.forEach(p => {
+      const row: number[] = [];
+      for (let d = 0; d <= degree; d++) {
+        row.push(Math.pow(p.x, d)); // [1, x, x^2, ...]
+      }
+      X.push(row);
+      Y.push(p.y);
+    });
 
-    // Calculer R² (coefficient de détermination)
-    const meanY = sumY / n;
-    const ssRes = points.reduce((sum, p) => {
-      const predicted = slope * p.x + intercept;
-      return sum + Math.pow(p.y - predicted, 2);
-    }, 0);
-    const ssTot = points.reduce((sum, p) => sum + Math.pow(p.y - meanY, 2), 0);
-    const rSquared = ssTot > 0 ? 1 - (ssRes / ssTot) : 0;
+    // Résolution du système (X^T X) β = X^T Y
+    const XT = math.transpose(X);
+    const XTX = math.multiply(XT, X) as number[][];
+    const XTY = math.multiply(XT, Y) as number[];
+    const coeffs = math.lusolve(XTX, XTY).map((v: any) => v[0]); // coefficients du polynôme
 
     // Générer les valeurs prédites
     const maxX = Math.max(...points.map(p => p.x));
     const predictedValues: Point[] = [];
-    
     for (let x = 0; x <= maxX + predictionDays; x++) {
-      predictedValues.push({
-        x,
-        y: slope * x + intercept
-      });
+      let yPred = 0;
+      for (let d = 0; d <= degree; d++) {
+        yPred += coeffs[d] * Math.pow(x, d);
+      }
+      // Empêcher les valeurs négatives (stock minimum = 0)
+      yPred = Math.max(0, yPred);
+      predictedValues.push({ x, y: yPred });
     }
 
-    // Prédiction future
-    const futurePrediction = slope * (maxX + predictionDays) + intercept;
+    // Calcul du R²
+    const meanY = Number(math.mean(Y));
+    const ssRes = points.reduce((sum, p) => {
+      let yPred = 0;
+      for (let d = 0; d <= degree; d++) {
+        yPred += coeffs[d] * Math.pow(p.x, d);
+      }
+      return sum + Math.pow(p.y - yPred, 2);
+    }, 0);
+    const ssTot = points.reduce((sum, p) => sum + Math.pow(p.y - meanY, 2), 0);
+    const rSquared = ssTot > 0 ? 1 - ssRes / ssTot : 0;
 
-    // Calculer quand le stock sera épuisé
-    let daysUntilStockout = null;
-    if (slope < 0) { // Si la tendance est décroissante
-      daysUntilStockout = Math.ceil(-intercept / slope);
+    // Estimation future
+    let futurePrediction = 0;
+    for (let d = 0; d <= degree; d++) {
+      futurePrediction += coeffs[d] * Math.pow(maxX + predictionDays, d);
     }
+    // Empêcher les valeurs négatives
+    futurePrediction = Math.max(0, futurePrediction);
+
+    // Détection rupture de stock (premier point où y = 0)
+    let daysUntilStockout: number | null = null;
+    for (const p of predictedValues) {
+      if (p.y === 0) {
+        daysUntilStockout = p.x;
+        break;
+      }
+    }
+
+    // Calculer la pente moyenne sur la période de prédiction (plus intuitive)
+    const stockActuel = points.length > 0 ? points[points.length - 1].y : 0;
+    const penteMoyenne = predictionDays > 0 ? (futurePrediction - stockActuel) / predictionDays : 0;
 
     return {
-      slope,
-      intercept,
+      slope: penteMoyenne,         // pente moyenne sur la période de prédiction
+      intercept: coeffs[0] || 0,   // constante
       rSquared,
       predictedValues,
       futurePrediction,
@@ -161,19 +191,37 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
       const mouvements = mouvementsParDate.get(dateStr) || [];
       
       mouvements.forEach(mouvement => {
-        switch (mouvement.type_mouvement) {
-          case 'AJOUT':
+        // Analyser la note pour comprendre le type de mouvement
+        const note = mouvement.note || '';
+        
+        if (note.includes('Création du nouveau produit')) {
+          // Création : définir le stock initial
+          stockCumulatif = mouvement.quantite;
+        } else if (note.includes('Modification du stock via gestion des produits')) {
+          // Modification : extraire la nouvelle quantité de la note
+          const match = note.match(/→\s*(\d+)/);
+          if (match) {
+            stockCumulatif = parseInt(match[1]);
+          } else {
+            // Fallback : appliquer la différence
             stockCumulatif += mouvement.quantite;
-            break;
-          case 'VENTE':
-            stockCumulatif -= mouvement.quantite;
-            break;
-          case 'RETRAIT_MANUEL':
-            stockCumulatif -= mouvement.quantite;
-            break;
-          case 'SUPPRESSION':
-            stockCumulatif -= mouvement.quantite;
-            break;
+          }
+        } else {
+          // Mouvements normaux (ventes, ajouts via fournisseurs, etc.)
+          switch (mouvement.type_mouvement) {
+            case 'AJOUT':
+              stockCumulatif += mouvement.quantite;
+              break;
+            case 'VENTE':
+              stockCumulatif -= mouvement.quantite;
+              break;
+            case 'RETRAIT_MANUEL':
+              stockCumulatif -= mouvement.quantite;
+              break;
+            case 'SUPPRESSION':
+              stockCumulatif -= mouvement.quantite;
+              break;
+          }
         }
       });
       
@@ -190,6 +238,15 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
     const dernierStockCalcule = stockCumulatif;
     if (Math.abs(dernierStockCalcule - produit.quantity) > 0.1) {
       console.warn(`Stock calculé (${dernierStockCalcule}) ne correspond pas au stock actuel (${produit.quantity}) pour le produit ${produit.nom}. Quantité initiale: ${quantiteInitiale}`);
+      
+      // Forcer la correction du stock final pour correspondre à la réalité
+      stockParDate.set(aujourdhui, produit.quantity);
+      
+      // Ajuster aussi le dernier point calculé
+      const dernierPoint = Array.from(stockParDate.entries()).pop();
+      if (dernierPoint && dernierPoint[0] !== aujourdhui) {
+        stockParDate.set(dernierPoint[0], produit.quantity);
+      }
     }
 
     // Calcul terminé
@@ -217,17 +274,68 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
   // Calculer la prédiction
   const prediction = useMemo(() => {
     if (!produitData) return null;
-    return calculateLeastSquares(produitData.points);
+    return calculatePolynomialRegression(produitData.points);
   }, [produitData, predictionDays]);
 
   // Préparer les données du graphique
   const chartData = useMemo(() => {
     if (!produitData || !prediction) return null;
 
-    const labels = prediction.predictedValues.map(p => {
+    // Créer un tableau de toutes les dates (historique + prédiction)
+    const allDates: string[] = [];
+    
+    // Ajouter les dates historiques
+    produitData.points.forEach(point => {
       const date = new Date(produitData.startDate);
-      date.setDate(date.getDate() + p.x);
-      return date.toLocaleDateString('fr-FR');
+      date.setDate(date.getDate() + point.x);
+      allDates.push(date.toISOString().split('T')[0]);
+    });
+    
+    // Ajouter les dates de prédiction (sans doublons)
+    prediction.predictedValues.forEach(point => {
+      const date = new Date(produitData.startDate);
+      date.setDate(date.getDate() + point.x);
+      const dateStr = date.toISOString().split('T')[0];
+      if (!allDates.includes(dateStr)) {
+        allDates.push(dateStr);
+      }
+    });
+    
+    // Trier toutes les dates chronologiquement
+    allDates.sort();
+    
+    // Créer les labels pour l'axe X
+    const labels = allDates.map(dateStr => {
+      return new Date(dateStr).toLocaleDateString('fr-FR');
+    });
+
+    // Créer un map pour accéder rapidement aux données historiques
+    const historiqueMap = new Map<number, number>();
+    produitData.points.forEach(point => {
+      historiqueMap.set(point.x, point.y);
+    });
+
+    // Créer un map pour accéder rapidement aux données prédites
+    const predictionMap = new Map<number, number>();
+    prediction.predictedValues.forEach(point => {
+      predictionMap.set(point.x, point.y);
+    });
+
+    // Préparer les données pour chaque date
+    const stockReelData: (number | null)[] = [];
+    const predictionData: (number | null)[] = [];
+
+    allDates.forEach((dateStr, index) => {
+      const date = new Date(dateStr);
+      const daysSinceStart = Math.floor((date.getTime() - produitData.startDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      // Données historiques (Stock Réel)
+      const stockReel = historiqueMap.get(daysSinceStart);
+      stockReelData.push(stockReel !== undefined ? stockReel : null);
+      
+      // Données prédites
+      const prediction = predictionMap.get(daysSinceStart);
+      predictionData.push(prediction !== undefined ? prediction : null);
     });
 
     return {
@@ -235,7 +343,7 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
       datasets: [
         {
           label: 'Stock Réel',
-          data: produitData.points.map(p => p.y),
+          data: stockReelData,
           borderColor: 'rgb(59, 130, 246)',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           borderWidth: 3,
@@ -243,10 +351,11 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
           tension: 0.1,
           pointRadius: 6,
           pointHoverRadius: 8,
+          spanGaps: true, // Permet de sauter les valeurs null
         },
         {
           label: 'Tendance Prédite',
-          data: prediction.predictedValues.map(p => p.y),
+          data: showTrendLine ? predictionData : predictionData.map(() => null),
           borderColor: 'rgb(239, 68, 68)',
           backgroundColor: 'rgba(239, 68, 68, 0.1)',
           borderWidth: 2,
@@ -254,31 +363,35 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
           tension: 0.1,
           pointRadius: 0,
           borderDash: [5, 5],
+          spanGaps: true,
         },
-        {
-          label: 'Zone de Prédiction',
-          data: prediction.predictedValues.map(p => p.y),
-          borderColor: 'rgba(239, 68, 68, 0.3)',
-          backgroundColor: 'rgba(239, 68, 68, 0.1)',
-          borderWidth: 1,
-          fill: true,
-          tension: 0.1,
-          pointRadius: 0,
-        }
+
       ],
     };
-  }, [produitData, prediction, predictionDays]);
+  }, [produitData, prediction, predictionDays, showTrendLine]);
 
-  const chartOptions = {
+  const chartOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     interaction: {
       mode: 'index' as const,
       intersect: false,
     },
+    animation: {
+      duration: 1000,
+      easing: 'easeInOutQuart' as const,
+    },
     plugins: {
       legend: {
         position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          font: {
+            size: 12,
+            weight: 'bold' as const,
+          },
+        },
       },
       title: {
         display: true,
@@ -286,25 +399,45 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
           ? `Prédiction de Stock pour ${produitData.produit.nom} (${produitData.produit.code})`
           : 'Sélectionnez un produit pour voir la prédiction',
         font: {
-          size: 16,
+          size: 18,
           weight: 'bold' as const,
+        },
+        padding: {
+          top: 10,
+          bottom: 20,
         },
       },
       tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        cornerRadius: 8,
+        displayColors: true,
         callbacks: {
           title: function(context: any) {
-            return `Date: ${context[0].label}`;
+            return `📅 ${context[0].label}`;
           },
           afterBody: function(context: any) {
             if (prediction) {
-              return [
-                `Tendance: ${prediction.slope > 0 ? 'Croissante' : 'Décroissante'}`,
-                `Pente: ${prediction.slope.toFixed(2)} unités/jour`,
-                `Précision: ${(prediction.rSquared * 100).toFixed(1)}%`,
-                prediction.daysUntilStockout 
-                  ? `Rupture de stock dans ${prediction.daysUntilStockout} jours`
-                  : 'Pas de rupture de stock prévue'
-              ];
+              const tooltipInfo = [];
+              
+              // Ajouter les informations de tendance
+              const trendIcon = prediction.slope > 0 ? '📈' : prediction.slope < 0 ? '📉' : '➡️';
+              const trendText = prediction.slope > 0 ? 'Croissante' : prediction.slope < 0 ? 'Décroissante' : 'Stable';
+              tooltipInfo.push(`${trendIcon} Direction: ${trendText}`);
+              tooltipInfo.push(`📊 Tendance moyenne: ${prediction.slope > 0 ? '+' : ''}${prediction.slope.toFixed(2)} unités/jour sur ${predictionDays} jours`);
+              tooltipInfo.push(`🎯 Précision: ${(prediction.rSquared * 100).toFixed(1)}%`);
+              
+              // Ajouter l'information de rupture de stock
+              if (prediction.daysUntilStockout) {
+                tooltipInfo.push(`⚠️ Rupture de stock dans ${prediction.daysUntilStockout} jours`);
+              } else {
+                tooltipInfo.push(`✅ Pas de rupture de stock prévue`);
+              }
+              
+              return tooltipInfo;
             }
             return [];
           }
@@ -315,22 +448,54 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
       x: {
         title: {
           display: true,
-          text: 'Date',
+          text: '📅 Date',
+          font: {
+            size: 14,
+            weight: 'bold' as const,
+          },
         },
         ticks: {
           maxRotation: 45,
           minRotation: 45,
+          autoSkip: true,
+          maxTicksLimit: 10,
+          font: {
+            size: 11,
+          },
+        },
+        grid: {
+          display: showGrid,
+          color: 'rgba(0, 0, 0, 0.1)',
+          drawBorder: false,
         },
       },
       y: {
         title: {
           display: true,
-          text: 'Stock',
+          text: '📦 Stock',
+          font: {
+            size: 14,
+            weight: 'bold' as const,
+          },
         },
         beginAtZero: true,
+        min: 0,
+        ticks: {
+          callback: function(value: any) {
+            return Math.max(0, value).toFixed(0);
+          },
+          font: {
+            size: 11,
+          },
+        },
+        grid: {
+          display: showGrid,
+          color: 'rgba(0, 0, 0, 0.1)',
+          drawBorder: false,
+        },
       },
     },
-  };
+  }), [produitData, prediction, showGrid]);
 
   if (!selectedProduitId) {
     return (
@@ -360,7 +525,8 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
       
       {/* Contrôles */}
       <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <div className="flex flex-col md:flex-row gap-4 items-center">
+        
+        <div className="flex flex-col md:flex-row gap-4 items-center mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Produit sélectionné
@@ -384,42 +550,157 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
             />
           </div>
         </div>
+
+        {/* Options avancées */}
+        <div className="border-t pt-4">
+          <button
+            onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+            className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            <svg className={`w-4 h-4 mr-2 transition-transform ${showAdvancedOptions ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Options avancées
+          </button>
+          
+          {showAdvancedOptions && (
+            <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={showGrid}
+                  onChange={(e) => setShowGrid(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Grille</span>
+              </label>
+              
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={showTrendLine}
+                  onChange={(e) => setShowTrendLine(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">Ligne de tendance</span>
+              </label>
+              
+
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Statistiques de prédiction */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <div className="text-blue-800 font-semibold text-sm">Tendance</div>
-          <div className="text-lg font-bold text-blue-600">
-            {prediction.slope > 0 ? 'Croissante' : 'Décroissante'}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-blue-800 font-semibold text-sm mb-1">Direction</div>
+              <div className="text-xl font-bold text-blue-700">
+                {prediction.slope > 0 ? '📈 Croissante' : prediction.slope < 0 ? '📉 Décroissante' : '➡️ Stable'}
+              </div>
+              <div className="text-xs text-blue-600 mt-1">
+                {prediction.slope > 0 ? 'Stock augmente' : prediction.slope < 0 ? 'Stock diminue' : 'Stock stable'}
+              </div>
+            </div>
+            <div className="w-10 h-10 bg-blue-200 rounded-lg flex items-center justify-center">
+              {prediction.slope > 0 ? (
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                </svg>
+              ) : prediction.slope < 0 ? (
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />
+                </svg>
+              )}
+            </div>
           </div>
         </div>
-        <div className="bg-green-50 p-3 rounded-lg">
-          <div className="text-green-800 font-semibold text-sm">Pente</div>
-          <div className="text-lg font-bold text-green-600">
-            {prediction.slope.toFixed(2)} unités/jour
+        
+        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-green-800 font-semibold text-sm mb-1">Tendance Moyenne</div>
+              <div className="text-xl font-bold text-green-700">
+                {prediction.slope > 0 ? '+' : ''}{prediction.slope.toFixed(2)} unités/jour
+              </div>
+              <div className="text-xs text-green-600 mt-1">
+                Sur {predictionDays} jours
+              </div>
+            </div>
+            <div className="w-10 h-10 bg-green-200 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
           </div>
         </div>
-        <div className="bg-purple-50 p-3 rounded-lg">
-          <div className="text-purple-800 font-semibold text-sm">Précision</div>
-          <div className="text-lg font-bold text-purple-600">
-            {(prediction.rSquared * 100).toFixed(1)}%
+        
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200 hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-purple-800 font-semibold text-sm mb-1">Précision</div>
+              <div className="text-xl font-bold text-purple-700">
+                {(prediction.rSquared * 100).toFixed(1)}%
+              </div>
+            </div>
+            <div className="w-10 h-10 bg-purple-200 rounded-lg flex items-center justify-center">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
           </div>
         </div>
-        <div className="bg-red-50 p-3 rounded-lg">
-          <div className="text-red-800 font-semibold text-sm">Rupture de Stock</div>
-          <div className="text-lg font-bold text-red-600">
-            {prediction.daysUntilStockout 
-              ? `Dans ${prediction.daysUntilStockout} jours`
-              : 'Non prévue'
-            }
-          </div>
-        </div>
+        
+
       </div>
 
+
+
       {/* Graphique de prédiction */}
-      <div className="h-96">
-        <Line data={chartData} options={chartOptions} />
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="p-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-800">Graphique de Prédiction</h3>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <span>Hauteur: 400px</span>
+              <button
+                onClick={() => window.print()}
+                className="ml-4 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs"
+              >
+                📄 Imprimer
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-4">
+          <div className="h-96">
+            <Line data={chartData} options={chartOptions} />
+          </div>
+        </div>
+        
+        {/* Légende interactive */}
+        <div className="p-4 bg-gray-50 border-t border-gray-200">
+          <div className="text-sm text-gray-600">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span>Stock Réel (données historiques)</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span>Tendance Prédite (régression polynomiale)</span>
+              </div>
+
+            </div>
+          </div>
+                </div>
       </div>
     </div>
   );

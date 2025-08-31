@@ -29,13 +29,16 @@ export const ProductManagement: React.FC = () => {
     prix: 0,
     code: '',
     description: '',
-    photo: '',
-    tva_direct: 20.00
+    photo: ''
+    // TVA supprimée - gérée uniquement via le bouton TVA dédié
   });
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categoryFilterIds, setCategoryFilterIds] = useState<string[]>([]);
   const [categoryFilterSearch, setCategoryFilterSearch] = useState('');
   const [showCategoryFilters, setShowCategoryFilters] = useState(true);
+  
+  // État pour la pagination
+  const [displayedCount, setDisplayedCount] = useState(10);
 
   // Utiliser le hook de prédictions si un produit est sélectionné
   const {
@@ -64,6 +67,24 @@ export const ProductManagement: React.FC = () => {
       return matchesSearch && matchesCategory;
     });
   }, [produits, searchTerm, categoryFilterIds]);
+
+  // Produits à afficher (pagination)
+  const displayedProduits = useMemo(() => {
+    return filteredProduits.slice(0, displayedCount);
+  }, [filteredProduits, displayedCount]);
+
+  // Vérifier s'il y a plus de produits à afficher
+  const hasMoreProducts = displayedCount < filteredProduits.length;
+
+  // Fonction pour afficher plus de produits
+  const handleShowMore = () => {
+    setDisplayedCount(prev => Math.min(prev + 20, filteredProduits.length));
+  };
+
+  // Réinitialiser la pagination quand les filtres changent
+  React.useEffect(() => {
+    setDisplayedCount(10);
+  }, [searchTerm, categoryFilterIds]);
 
   // Catégories affichées dans le filtre (recherche + tri: sélectionnées d'abord)
   const displayedCategories = useMemo(() => {
@@ -122,6 +143,7 @@ export const ProductManagement: React.FC = () => {
       code: editingProduct.code,
       description: editingProduct.description,
       photo: editingProduct.photo
+      // TVA supprimée - doit être modifiée via le bouton TVA dédié
     });
 
     if (result.success) {
@@ -290,6 +312,7 @@ export const ProductManagement: React.FC = () => {
 
   const clearSearch = () => {
     setSearchTerm('');
+    setDisplayedCount(10); // Réinitialiser la pagination
   };
 
   const toggleCategoryFilter = (categorieId: string) => {
@@ -303,6 +326,7 @@ export const ProductManagement: React.FC = () => {
   const clearCategoryFilters = () => {
     setCategoryFilterIds([]);
     setCategoryFilterSearch('');
+    setDisplayedCount(10); // Réinitialiser la pagination
   };
 
   const selectAllDisplayedCategories = () => {
@@ -349,6 +373,16 @@ export const ProductManagement: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Gestion des Produits</h1>
           <p className="text-gray-600 mt-1">Ajoutez, modifiez et surveillez vos produits</p>
+          <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+            <span>
+              Affichage de {displayedProduits.length} sur {filteredProduits.length} produit{filteredProduits.length !== 1 ? 's' : ''}
+            </span>
+            {hasMoreProducts && (
+              <span className="text-blue-600 font-medium">
+                +{filteredProduits.length - displayedProduits.length} autres disponibles
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           <button
@@ -647,28 +681,41 @@ export const ProductManagement: React.FC = () => {
 
              {/* En-tête du tableau */}
        <div className="bg-gray-50 p-4 rounded-t-lg border-b border-gray-200">
-         <div className="grid grid-cols-13 gap-4 text-sm font-medium text-gray-700">
-          <div className="col-span-2">Image</div>
-          <div className="col-span-2">Nom</div>
-          <div className="col-span-1">Code</div>
-          <div className="col-span-1">Stock</div>
-          <div className="col-span-1">Seuil</div>
-          <div className="col-span-1">Prix</div>
-          <div className="col-span-1">TVA</div>
-          <div className="col-span-2">Description</div>
-          <div className="col-span-2">Actions</div>
+         <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
+          <div className="col-span-1 text-center">Image</div>
+          <div className="col-span-3 text-center">Nom</div>
+          <div className="col-span-1 text-center">Code</div>
+          <div className="col-span-1 text-center">Stock</div>
+          <div className="col-span-1 text-center">Seuil</div>
+          <div className="col-span-1 text-center">Prix</div>
+          <div className="col-span-1 text-center">TVA</div>
+          <div className="col-span-2 text-center">Description</div>
+          <div className="col-span-1 text-center">Actions</div>
         </div>
       </div>
 
              {/* Liste des produits */}
        <div className="space-y-2">
-         {filteredProduits.map((produit) => (
-           <div key={produit.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+                 {displayedProduits.map((produit) => (
+          <div key={produit.id} className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
             {editingProduct?.id === produit.id ? (
-              <form onSubmit={handleEditSubmit} className="space-y-4">
-                <div className="grid grid-cols-13 gap-4">
+              <div className="space-y-3">
+                {/* En-tête des colonnes pour l'édition */}
+                <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-600 bg-blue-50 p-2 rounded border border-blue-200">
+                  <div className="col-span-1 text-center">Image</div>
+                  <div className="col-span-3 text-center">Nom</div>
+                  <div className="col-span-1 text-center">Code</div>
+                  <div className="col-span-1 text-center">Stock</div>
+                  <div className="col-span-1 text-center">Seuil</div>
+                  <div className="col-span-1 text-center">Prix</div>
+                  <div className="col-span-2 text-center">Description</div>
+                  <div className="col-span-2 text-center">Actions</div>
+                </div>
+                
+                <form onSubmit={handleEditSubmit} className="space-y-3">
+                  <div className="grid grid-cols-12 gap-3">
                   {/* Image */}
-                  <div className="col-span-2">
+                  <div className="col-span-1 flex justify-center">
                     <ImageUpload
                       currentImageUrl={editingProduct.photo || ''}
                       onImageUpload={handleEditImageUpload}
@@ -679,7 +726,7 @@ export const ProductManagement: React.FC = () => {
                   </div>
                   
                   {/* Nom */}
-                  <div className="col-span-2">
+                  <div className="col-span-3">
                     <input
                       type="text"
                       name="nom"
@@ -749,26 +796,12 @@ export const ProductManagement: React.FC = () => {
                     />
                   </div>
                   
-                  {/* TVA */}
-                  <div className="col-span-1">
-                    <input
-                      type="number"
-                      name="tva_direct"
-                      value={editingProduct.tva_direct || 20.00}
-                      onChange={handleEditInputChange}
-                      className="w-full border p-1 rounded text-sm"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      required
-                    />
-                  </div>
-                  
                   {/* Actions */}
-                  <div className="col-span-2 flex gap-2">
+                  <div className="col-span-2 flex gap-1 justify-center">
                     <button
                       type="submit"
                       className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                      title="Sauvegarder"
                     >
                       💾
                     </button>
@@ -776,6 +809,7 @@ export const ProductManagement: React.FC = () => {
                       type="button"
                       onClick={handleCancelEdit}
                       className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600"
+                      title="Annuler"
                     >
                       ✕
                     </button>
@@ -783,31 +817,32 @@ export const ProductManagement: React.FC = () => {
                 </div>
 
                 {/* Catégories en mode édition */}
-                <div className="mt-4">
-                  <label className="block mb-2 text-sm font-medium">Catégories</label>
+                <div className="mt-3">
+                  <label className="block mb-1 text-xs font-medium text-gray-700">Catégories</label>
                   {categoriesLoading ? (
-                    <div className="text-xs text-gray-500">Chargement des catégories...</div>
+                    <div className="text-xs text-gray-500">Chargement...</div>
                   ) : (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-6 gap-1">
                       {categories.map((categorie) => (
-                        <label key={categorie.id} className="flex items-center space-x-2 cursor-pointer">
+                        <label key={categorie.id} className="flex items-center space-x-1 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={editingProduct.categories?.some(cat => cat.id === categorie.id) || false}
                             onChange={() => handleEditCategoryToggle(categorie.id)}
-                            className="rounded"
+                            className="rounded w-3 h-3"
                           />
-                          <span className="text-xs">{categorie.nom_categorie}</span>
+                          <span className="text-xs text-gray-600">{categorie.nom_categorie}</span>
                         </label>
                       ))}
                     </div>
                   )}
                 </div>
-              </form>
+                </form>
+              </div>
             ) : (
-              <div className="grid grid-cols-13 gap-4 h-full items-center">
+              <div className="grid grid-cols-12 gap-4 h-full items-center">
                 {/* Image */}
-                <div className="col-span-2 flex items-center">
+                <div className="col-span-1 flex items-center justify-center">
                   {produit.photo ? (
                     <img
                       src={produit.photo}
@@ -824,84 +859,116 @@ export const ProductManagement: React.FC = () => {
                 </div>
                 
                 {/* Nom */}
-                <div className="col-span-2 text-sm font-medium text-gray-900 truncate">
+                <div className="col-span-3 text-sm font-medium text-gray-900 truncate text-center">
                   {produit.nom}
                 </div>
                 
                 {/* Code */}
-                <div className="col-span-1 text-sm text-gray-600 truncate">
+                <div className="col-span-1 text-sm text-gray-600 truncate text-center">
                   {produit.code}
                 </div>
                 
                 {/* Stock */}
-                <div className={`col-span-1 text-sm font-medium ${
+                <div className={`col-span-1 text-sm font-medium text-center ${
                   produit.quantity <= produit.quantity_critique ? 'text-red-600' : 'text-green-600'
                 }`}>
                   {produit.quantity}
                 </div>
                 
                 {/* Seuil critique */}
-                <div className="col-span-1 text-sm text-gray-600">
+                <div className="col-span-1 text-sm text-gray-600 text-center">
                   {produit.quantity_critique}
                 </div>
                 
                 {/* Prix */}
-                <div className="col-span-1 text-sm font-medium text-gray-900">
+                <div className="col-span-1 text-sm font-medium text-gray-900 text-center">
                   {produit.prix}€
                 </div>
                 
                 {/* TVA */}
-                <div className="col-span-1 text-sm font-medium text-gray-900">
+                <div className="col-span-1 text-sm font-medium text-gray-900 text-center">
                   {produit.tva_direct || 20.00}%
                 </div>
                 
                 {/* Description */}
-                <div className="col-span-2 text-sm text-gray-600 truncate">
+                <div className="col-span-2 text-sm text-gray-600 truncate text-center">
                   {produit.description || 'Aucune description'}
                 </div>
                 
-                {/* Actions */}
-                <div className="col-span-2 flex gap-2">
-                  <button
-                    onClick={() => handleShowHistorique(produit)}
-                    className="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600 transition-colors"
-                    title="Voir l'historique"
-                  >
-                    Historique
-                  </button>
-                  <button
-                    onClick={() => handleShowTvaModal(produit)}
-                    className="bg-purple-500 text-white px-3 py-1 rounded text-xs hover:bg-purple-600 transition-colors"
-                    title="Modifier TVA"
-                  >
-                    TVA
-                  </button>
-                  <button
-                    onClick={() => handleEdit(produit)}
-                    className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600 transition-colors"
-                    title="Modifier"
-                  >
-                    Modifier
-                  </button>
-                  <button
-                    onClick={() => handleDelete(produit.id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded text-xs hover:bg-red-600 transition-colors"
-                    title="Supprimer"
-                  >
-                    Supprimer
-                  </button>
+                {/* Actions - Ultra compact */}
+                <div className="col-span-1 relative flex justify-center">
+                  <div className="flex flex-col gap-1">
+                    {/* Bouton principal - Modifier (le plus utilisé) */}
+                    <button
+                      onClick={() => handleEdit(produit)}
+                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 transition-colors w-full"
+                      title="Modifier"
+                    >
+                      Modifier
+                    </button>
+                    
+                    {/* Menu déroulant pour les autres actions */}
+                    <div className="relative group">
+                      <button
+                        className="bg-gray-500 text-white px-2 py-1 rounded text-xs hover:bg-gray-600 transition-colors w-full"
+                        title="Plus d'actions"
+                      >
+                        <svg className="w-3 h-3 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {/* Menu déroulant */}
+                      <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                        <div className="py-1">
+                          <button
+                            onClick={() => handleShowHistorique(produit)}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                            title="Voir l'historique"
+                          >
+                            <svg className="w-3 h-3 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            </svg>
+                            Historique
+                          </button>
+                          
+                          <button
+                            onClick={() => handleShowTvaModal(produit)}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 flex items-center"
+                            title="Modifier TVA"
+                          >
+                            <svg className="w-3 h-3 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                            </svg>
+                            TVA
+                          </button>
+                          
+                          <button
+                            onClick={() => handleDelete(produit.id)}
+                            className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center"
+                            title="Supprimer"
+                          >
+                            <svg className="w-3 h-3 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Supprimer
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Affichage des catégories en mode lecture */}
             {editingProduct?.id !== produit.id && produit.categories && produit.categories.length > 0 && (
-              <div className="mt-2 pt-2 border-t">
+              <div className="mt-1 pt-1 border-t border-gray-100">
                 <div className="flex flex-wrap gap-1">
                   {produit.categories.map((categorie) => (
                     <span
                       key={categorie.id}
-                      className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                      className="bg-blue-50 text-blue-700 text-xs px-1.5 py-0.5 rounded-full border border-blue-200"
                     >
                       {categorie.nom_categorie}
                     </span>
@@ -911,9 +978,42 @@ export const ProductManagement: React.FC = () => {
             )}
           </div>
         ))}
+        
+        {/* Bouton "Afficher plus" et informations de pagination */}
+        {hasMoreProducts && (
+          <div className="mt-6 text-center">
+            <button
+              onClick={handleShowMore}
+              className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg className="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              Afficher 20 produits de plus
+            </button>
+            <p className="text-sm text-gray-600 mt-2">
+              Affichage de {displayedProduits.length} sur {filteredProduits.length} produits
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              {Math.min(20, filteredProduits.length - displayedProduits.length)} produits restants
+            </p>
+          </div>
+        )}
+        
+        {/* Message quand tous les produits sont affichés */}
+        {!hasMoreProducts && filteredProduits.length > 0 && (
+          <div className="mt-6 text-center">
+            <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-lg">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Tous les produits sont affichés ({filteredProduits.length} produits)
+            </div>
+          </div>
+        )}
       </div>
 
-             {filteredProduits.length === 0 && !loading && (
+      {filteredProduits.length === 0 && !loading && (
          <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
            <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />

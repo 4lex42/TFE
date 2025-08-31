@@ -9,22 +9,41 @@ export const useHistoriqueTva = () => {
 
   const fetchHistorique = async () => {
     try {
-      const { data, error } = await supabase
+      // Récupérer d'abord l'historique TVA
+      const { data: historiqueData, error: historiqueError } = await supabase
         .from('historique_tva')
-        .select(`
-          *,
-          produit(id, nom, code),
-          user(id, name, email)
-        `)
+        .select('*')
         .order('date_modification', { ascending: false });
 
-      if (error) throw error;
-      
-      // Transformer les données pour simplifier la structure
-      const transformedData = (data || []).map(item => ({
+      if (historiqueError) throw historiqueError;
+
+      // Récupérer les informations des produits
+      const produitIds = [...new Set(historiqueData?.map(item => item.produit_id).filter(Boolean) || [])];
+      const { data: produitsData, error: produitsError } = await supabase
+        .from('produit')
+        .select('id, nom, code')
+        .in('id', produitIds);
+
+      if (produitsError) throw produitsError;
+
+      // Récupérer les informations des utilisateurs
+      const userIds = [...new Set(historiqueData?.map(item => item.user_id).filter(Boolean) || [])];
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .in('id', userIds);
+
+      if (usersError) throw usersError;
+
+      // Créer des maps pour un accès rapide
+      const produitsMap = new Map(produitsData?.map(p => [p.id, p]) || []);
+      const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
+
+      // Transformer les données en combinant toutes les informations
+      const transformedData = (historiqueData || []).map(item => ({
         ...item,
-        produit: item.produit?.[0] || null,
-        user: item.user?.[0] || null,
+        produit: item.produit_id ? produitsMap.get(item.produit_id) || null : null,
+        user: item.user_id ? usersMap.get(item.user_id) || null : null,
       }));
       
       setHistorique(transformedData);

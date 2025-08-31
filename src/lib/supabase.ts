@@ -133,6 +133,7 @@ export interface Database {
           code: string;
           photo: string | null;
           tva_id: string | null;
+          tva_direct: number | null;
           predict_id: string | null;
           description: string | null;
           ajout_produit_id: string | null;
@@ -146,6 +147,7 @@ export interface Database {
           code: string;
           photo?: string | null;
           tva_id?: string | null;
+          tva_direct?: number | null;
           predict_id?: string | null;
           description?: string | null;
           ajout_produit_id?: string | null;
@@ -159,6 +161,7 @@ export interface Database {
           code?: string;
           photo?: string | null;
           tva_id?: string | null;
+          tva_direct?: number | null;
           predict_id?: string | null;
           description?: string | null;
           ajout_produit_id?: string | null;
@@ -319,6 +322,29 @@ export interface Database {
           id?: string;
           produit_id?: string;
           fournisseur_id?: string;
+        };
+      };
+      historique: {
+        Row: {
+          id: string;
+          produit_id: string | null;
+          tva_id: string | null;
+          date: string;
+          tva: number;
+        };
+        Insert: {
+          id?: string;
+          produit_id: string | null;
+          tva_id: string | null;
+          date: string;
+          tva: number;
+        };
+        Update: {
+          id?: string;
+          produit_id?: string | null;
+          tva_id?: string | null;
+          date?: string;
+          tva?: number;
         };
       };
     };
