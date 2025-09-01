@@ -600,20 +600,7 @@ export const ProductManagement: React.FC = () => {
                   className="w-full border p-2 rounded"
                 />
               </div>
-              <div>
-                <label className="block mb-1">TVA (%)</label>
-                <input
-                  type="number"
-                  name="tva_direct"
-                  value={formData.tva_direct}
-                  onChange={handleInputChange}
-                  className="w-full border p-2 rounded"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  required
-                />
-              </div>
+              
             </div>
             
             {/* Upload d'image */}
@@ -655,20 +642,19 @@ export const ProductManagement: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setShowAddForm(false);
-                  setFormData({
-                    nom: '',
-                    quantity: 0,
-                    quantity_critique: 0,
-                    prix: 0,
-                    code: '',
-                    description: '',
-                    photo: '',
-                    tva_direct: 20.00
-                  });
-                  setSelectedCategories([]);
-                }}
+                                 onClick={() => {
+                   setShowAddForm(false);
+                   setFormData({
+                     nom: '',
+                     quantity: 0,
+                     quantity_critique: 0,
+                     prix: 0,
+                     code: '',
+                     description: '',
+                     photo: ''
+                   });
+                   setSelectedCategories([]);
+                 }}
                 className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
               >
                 Annuler
