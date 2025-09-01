@@ -47,44 +47,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Envoyer un email selon le statut
-    if (newStatus === 'approved') {
-      try {
-        // Envoyer un email d'approbation
-        const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'signup',
-          email: user.email,
-        });
-
-        if (emailError) {
-          console.error('Erreur envoi email approbation:', emailError);
-          // Ne pas échouer si l'email ne peut pas être envoyé
-        } else {
-          console.log('Email d\'approbation envoyé avec succès à:', user.email);
-        }
-      } catch (emailErr) {
-        console.error('Erreur lors de l\'envoi de l\'email d\'approbation:', emailErr);
-        // Ne pas échouer si l'email ne peut pas être envoyé
-      }
-    } else if (newStatus === 'rejected') {
-      try {
-        // Envoyer un email de rejet
-        const { error: emailError } = await supabaseAdmin.auth.admin.generateLink({
-          type: 'recovery',
-          email: user.email,
-        });
-
-        if (emailError) {
-          console.error('Erreur envoi email rejet:', emailError);
-          // Ne pas échouer si l'email ne peut pas être envoyé
-        } else {
-          console.log('Email de rejet envoyé avec succès à:', user.email);
-        }
-      } catch (emailErr) {
-        console.error('Erreur lors de l\'envoi de l\'email de rejet:', emailErr);
-        // Ne pas échouer si l'email ne peut pas être envoyé
-      }
-    }
+    // Log du changement de statut
+    console.log(`Statut de l'utilisateur ${user.email} changé vers: ${newStatus}`);
 
     return NextResponse.json({
       success: true,
