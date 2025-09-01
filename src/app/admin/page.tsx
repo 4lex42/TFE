@@ -13,7 +13,32 @@ export default function AdminPage() {
   const { users, createUser, deleteUser, updateUserStatus } = useUsers();
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'fournisseurs' | 'tva'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'fournisseurs' | 'tva' | 'historique'>('users');
+
+  // Variables pour l'onglet historique
+  const [filteredHistorique] = useState([]);
+  const [selectedType] = useState('all');
+  const [startDate] = useState('');
+  const [endDate] = useState('');
+  const [historiquePerPage] = useState(10);
+  const [historiqueCurrentPage] = useState(1);
+  const [historiqueTotalPages] = useState(1);
+  const [historiqueIndexOfFirst] = useState(0);
+  const [historiqueIndexOfLast] = useState(10);
+  const [currentHistorique] = useState([]);
+  const [historiqueLoading] = useState(false);
+  const [historiqueError] = useState(null);
+
+  // Fonctions pour l'onglet historique
+  const handleTypeFilter = (value: string) => {};
+  const setStartDate = (value: string) => {};
+  const setEndDate = (value: string) => {};
+  const handleDateFilter = () => {};
+  const clearHistoriqueFilters = () => {};
+  const handleHistoriquePerPageChange = (value: number) => {};
+  const handleHistoriquePreviousPage = () => {};
+  const handleHistoriqueNextPage = () => {};
+  const handleHistoriquePageChange = (page: number) => {};
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     type: 'user';
@@ -613,6 +638,7 @@ export default function AdminPage() {
               )}
 
 
+              {activeTab === 'historique' && (
                 <div className="p-8 animate-fadeIn">
                   <div className="mb-8">
                     <h2 className="text-3xl font-bold text-gray-800 mb-3 flex items-center">
