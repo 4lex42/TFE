@@ -121,8 +121,7 @@ export const ProductManagement: React.FC = () => {
         prix: 0,
         code: '',
         description: '',
-        photo: '',
-        tva_direct: 20.00
+        photo: ''
       });
       setSelectedCategories([]);
       setMessage({ type: 'success', text: 'Produit ajouté avec succès' });
