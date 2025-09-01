@@ -610,7 +610,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {activeTab === 'historique' && (
+              {/* Onglet historique temporairement désactivé - contenu à implémenter plus tard */}
                 <div className="p-8 animate-fadeIn">
                   <div className="mb-8">
                     <h2 className="text-3xl font-bold text-gray-800 mb-3 flex items-center">
