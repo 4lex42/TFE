@@ -43,6 +43,23 @@ export default function HistoriqueVentesPage() {
   
   const { user } = useAuth();
 
+  // Fonction pour formater correctement les dates sans les heures
+  const formatDate = (dateString: string) => {
+    try {
+      // Créer la date directement sans modifier le fuseau horaire
+      const date = new Date(dateString);
+      
+      return date.toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (error) {
+      console.error('Erreur de formatage de date:', error);
+      return dateString; // Retourner la chaîne originale en cas d'erreur
+    }
+  };
+
   useEffect(() => {
     fetchVentes();
   }, []);
@@ -636,13 +653,7 @@ export default function HistoriqueVentesPage() {
                         </div>
                         
                         <p className="text-sm text-gray-600 mb-1">
-                          {new Date(vente.date).toLocaleDateString('fr-FR', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {formatDate(vente.date)}
                         </p>
                         
                         <p className="text-sm text-gray-600">
