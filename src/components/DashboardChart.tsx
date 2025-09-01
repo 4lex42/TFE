@@ -288,7 +288,7 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
           padding: 20,
           font: {
             size: 12,
-            weight: '600'
+            weight: 'bold' as const
           }
         }
       },
@@ -344,7 +344,7 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
           text: 'Date',
           font: {
             size: 12,
-            weight: '600'
+            weight: 'bold' as const
           }
         },
         grid: {
@@ -368,7 +368,7 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
           text: 'Quantité',
           font: {
             size: 12,
-            weight: '600'
+            weight: 'bold' as const
           }
         },
         grid: {
