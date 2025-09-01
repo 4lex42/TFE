@@ -591,8 +591,8 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
         </div>
       </div>
 
-      {/* Statistiques de prédiction */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+             {/* Statistiques de prédiction */}
+       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <div>
@@ -657,27 +657,19 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
           </div>
         </div>
         
-
+        
+        
       </div>
 
 
 
       {/* Graphique de prédiction */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="p-4 bg-gray-50 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800">Graphique de Prédiction</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>Hauteur: 400px</span>
-              <button
-                onClick={() => window.print()}
-                className="ml-4 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs"
-              >
-                📄 Imprimer
-              </button>
-            </div>
-          </div>
-        </div>
+                 <div className="p-4 bg-gray-50 border-b border-gray-200">
+           <div className="flex items-center justify-between">
+             <h3 className="text-lg font-semibold text-gray-800">Graphique de Prédiction</h3>
+           </div>
+         </div>
         
         <div className="p-4">
           <div className="h-96">
@@ -697,10 +689,9 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
                 <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                 <span>Tendance Prédite (régression polynomiale)</span>
               </div>
-
             </div>
           </div>
-                </div>
+        </div>
       </div>
     </div>
   );
