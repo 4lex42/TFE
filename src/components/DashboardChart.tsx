@@ -397,7 +397,7 @@ export default function DashboardChart({ onProduitSelect }: DashboardChartProps)
     },
     animation: {
       duration: 1000,
-      easing: 'easeInOutQuart'
+      easing: 'easeInOutQuart' as const
     }
   };
 
