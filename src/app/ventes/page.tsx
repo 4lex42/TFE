@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import { enregistrerVenteStock } from '../../lib/stockUtils';
 import { useAuth } from '../../hooks/useAuth';
+import { useCategories } from '../../hooks/useCategories';
 
 // Styles CSS personnalisés pour les animations
 const customStyles = `
@@ -72,9 +73,9 @@ export default function VentesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [categories, setCategories] = useState<{id: string, nom_categorie: string}[]>([]);
   const [modePaiement, setModePaiement] = useState<string>('especes');
   const { user } = useAuth();
+  const { categories } = useCategories();
 
   useEffect(() => {
     fetchProduits();
@@ -90,40 +91,55 @@ export default function VentesPage() {
           quantity, 
           prix, 
           code,
-          tva_direct,
-          categories:lien_categorie_produit(
-            id_categorie,
-            categorie:categorie(id, nom_categorie)
-          )
+          tva_direct
         `)
         .order('nom');
 
       if (error) throw error;
       
-      // Log de débogage pour voir la structure des données
-      console.log('Produits récupérés avec TVA:', data);
+      console.log('Produits récupérés:', data);
       
-      // Vérifier d'abord si la table lien_categorie_produit contient des données
-      const { data: lienData, error: lienError } = await supabase
-        .from('lien_categorie_produit')
-        .select('*')
-        .limit(5);
-      
-      console.log('Données de lien_categorie_produit:', lienData);
-      console.log('Erreur lien_categorie_produit:', lienError);
-      
-      // Pour l'instant, utiliser les produits sans catégories pour éviter les erreurs de build
-      const produitsAvecCategories = (data || []).map(produit => ({
-        ...produit,
-        categories: []
+      // Récupérer les catégories pour chaque produit
+      const produitsAvecCategories = await Promise.all((data || []).map(async (produit) => {
+        try {
+          const { data: lienData } = await supabase
+            .from('lien_categorie_produit')
+            .select(`
+              id_categorie,
+              categorie:categorie(id, nom_categorie)
+            `)
+            .eq('id_produit', produit.id);
+          
+          console.log(`Catégories pour produit ${produit.nom}:`, lienData);
+          
+          let categories: {id: string, nom_categorie: string}[] = [];
+          if (lienData && Array.isArray(lienData)) {
+            categories = lienData
+              .filter(lien => lien.categorie && typeof lien.categorie === 'object')
+              .map(lien => ({
+                id: lien.id_categorie,
+                nom_categorie: (lien.categorie as any).nom_categorie
+              }));
+          }
+          
+          return {
+            ...produit,
+            categories
+          };
+        } catch (catError) {
+          console.error(`Erreur lors de la récupération des catégories pour ${produit.nom}:`, catError);
+          return {
+            ...produit,
+            categories: []
+          };
+        }
       }));
       
-      console.log('Produits chargés:', produitsAvecCategories);
-      
-      setCategories([]);
+      console.log('Produits avec catégories:', produitsAvecCategories);
       setProduits(produitsAvecCategories);
     } catch (err) {
       setError('Erreur lors du chargement des produits');
+      console.error('Erreur détaillée:', err);
     } finally {
       setLoading(false);
     }
@@ -471,11 +487,15 @@ export default function VentesPage() {
                             className="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 appearance-none bg-white"
                           >
                             <option value="all">Toutes les catégories</option>
-                            {categories.map(category => (
-                              <option key={category.id} value={category.nom_categorie}>
-                                {category.nom_categorie}
-                              </option>
-                            ))}
+                            {categories && categories.length > 0 ? (
+                              categories.map(category => (
+                                <option key={category.id} value={category.nom_categorie}>
+                                  {category.nom_categorie}
+                                </option>
+                              ))
+                            ) : (
+                              <option value="all" disabled>Aucune catégorie disponible</option>
+                            )}
                           </select>
                           <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

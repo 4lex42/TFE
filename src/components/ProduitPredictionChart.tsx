@@ -667,20 +667,11 @@ export default function ProduitPredictionChart({ selectedProduitId }: ProduitPre
         <div className="p-4 bg-gray-50 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-800">Graphique de Prédiction</h3>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <span>Hauteur: 400px</span>
-              <button
-                onClick={() => window.print()}
-                className="ml-4 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-xs"
-              >
-                📄 Imprimer
-              </button>
-            </div>
           </div>
         </div>
         
         <div className="p-4">
-          <div className="h-96">
+          <div className="h-80">
             <Line data={chartData} options={chartOptions} />
           </div>
         </div>
