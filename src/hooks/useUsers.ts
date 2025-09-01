@@ -153,7 +153,7 @@ export const useUsers = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, role')
+        .select('id, name, email, role, status')
         .eq('id', userId)
         .single();
 
@@ -169,7 +169,7 @@ export const useUsers = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, role')
+        .select('id, name, email, role, status')
         .eq('role', role)
         .order('name');
 
@@ -185,7 +185,7 @@ export const useUsers = () => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('id, name, email, role')
+        .select('id, name, email, role, status')
         .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`)
         .order('name');
 
