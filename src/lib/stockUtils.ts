@@ -29,13 +29,13 @@ export const enregistrerMouvementStock = async (
               .select('id')
               .eq('email', user.email)
               .single();
-            currentUserId = userData?.id || null;
+            currentUserId = userData?.id || undefined;
           } else {
-            currentUserId = null;
+            currentUserId = undefined;
           }
         } catch (authError) {
           console.warn('Impossible de récupérer l\'utilisateur connecté:', authError);
-          currentUserId = null;
+          currentUserId = undefined;
         }
       }
 
@@ -115,13 +115,13 @@ export const enregistrerAjoutStockViaAjoutProduits = async (
             .select('id')
             .eq('email', user.email)
             .single();
-          currentUserId = userData?.id || null;
+          currentUserId = userData?.id || undefined;
         } else {
-          currentUserId = null;
+          currentUserId = undefined;
         }
       } catch (authError) {
         console.warn('Impossible de récupérer l\'utilisateur connecté:', authError);
-        currentUserId = null;
+        currentUserId = undefined;
       }
     }
 
