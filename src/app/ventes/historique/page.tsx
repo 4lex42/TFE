@@ -419,7 +419,7 @@ export default function HistoriqueVentesPage() {
                     </svg>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">
-                    💡 Recherchez par ID vente, nom/code produit, ou montant approximatif
+                    Recherchez par ID vente, nom/code produit, ou montant approximatif
                   </p>
                 </div>
 
@@ -450,10 +450,10 @@ export default function HistoriqueVentesPage() {
                     onChange={(e) => setFilterModePaiement(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200"
                   >
-                    <option value="">🔄 Tous les modes</option>
-                    <option value="especes">💵 Espèces</option>
-                    <option value="carte">💳 Carte</option>
-                    <option value="cheque">📄 Chèque</option>
+                    <option value="">Tous les modes</option>
+                    <option value="especes">Espèces</option>
+                    <option value="carte">Carte</option>
+                    <option value="cheque">Chèque</option>
                   </select>
                 </div>
               </div>
@@ -461,9 +461,6 @@ export default function HistoriqueVentesPage() {
               {/* Deuxième ligne - Filtres avancés */}
               <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                  <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
                   Filtres avancés
                 </h3>
                 
@@ -555,9 +552,9 @@ export default function HistoriqueVentesPage() {
                       onChange={(e) => setSortBy(e.target.value as 'date' | 'total' | 'mode')}
                       className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white"
                     >
-                      <option value="date">📅 Date</option>
-                      <option value="total">💰 Montant</option>
-                      <option value="mode">💳 Mode de paiement</option>
+                      <option value="date">Date</option>
+                      <option value="total">Montant</option>
+                      <option value="mode">Mode de paiement</option>
                     </select>
                     
                     <button
@@ -579,7 +576,7 @@ export default function HistoriqueVentesPage() {
                       <span className="text-gray-600 font-medium">Filtres actifs:</span>
                       {filterDate && (
                         <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
-                          📅 {filterDate}
+                          {filterDate}
                           <button
                             onClick={() => setFilterDate('')}
                             className="ml-1 text-green-600 hover:text-green-800"
@@ -590,7 +587,7 @@ export default function HistoriqueVentesPage() {
                       )}
                       {filterModePaiement && (
                         <span className="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
-                          💳 {filterModePaiement}
+                          {filterModePaiement}
                           <button
                             onClick={() => setFilterModePaiement('')}
                             className="ml-1 text-purple-600 hover:text-purple-800"
@@ -601,7 +598,7 @@ export default function HistoriqueVentesPage() {
                       )}
                       {searchTerm && (
                         <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                          🔍 {searchTerm.length > 20 ? searchTerm.substring(0, 20) + '...' : searchTerm}
+                          {searchTerm.length > 20 ? searchTerm.substring(0, 20) + '...' : searchTerm}
                           <button
                             onClick={() => setSearchTerm('')}
                             className="ml-1 text-blue-600 hover:text-blue-800"
@@ -622,88 +619,6 @@ export default function HistoriqueVentesPage() {
                     </svg>
                     Effacer tous les filtres
                   </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section d'aide et d'exemples */}
-        <div className="max-w-6xl mx-auto mb-8">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-blue-800 mb-4 flex items-center">
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Comment rechercher efficacement ?
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold text-blue-700 mb-3 flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  🔍 Recherche simple
-                </h4>
-                <ul className="text-sm text-blue-700 space-y-2">
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>ID vente:</strong> Tapez l'ID complet ou partiel</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>Nom produit:</strong> Recherchez par nom de produit</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>Code produit:</strong> Recherchez par code produit</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>Montant:</strong> Tapez un montant exact (ex: 25.50)</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold text-blue-700 mb-3 flex items-center">
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                  ⚡ Recherche avancée
-                </h4>
-                <ul className="text-sm text-blue-700 space-y-2">
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>Montant min:</strong> Utilisez le champ "Montant minimum"</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>Montant max:</strong> Utilisez le champ "Montant maximum"</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>Nombre produits:</strong> Sélectionnez le nombre minimum</span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-500 mr-2">•</span>
-                    <span><strong>Combinaisons:</strong> Utilisez plusieurs filtres ensemble</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="mt-6 p-4 bg-blue-100 rounded-xl border border-blue-200">
-              <div className="flex items-start">
-                <span className="text-blue-600 text-lg mr-3">💡</span>
-                <div>
-                  <p className="text-sm text-blue-800 font-medium mb-1">
-                    <strong>Astuce de recherche intelligente :</strong>
-                  </p>
-                  <p className="text-sm text-blue-700">
-                    La recherche est intelligente ! Elle trouve automatiquement les ventes correspondant à vos critères, même avec des montants approximatifs (±0.50€). Combinez les filtres pour des résultats plus précis.
-                  </p>
                 </div>
               </div>
             </div>

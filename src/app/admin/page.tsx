@@ -6,39 +6,15 @@ import ConfirmationModal from '../../components/ConfirmationModal';
 import { CategoryManagement } from '../../components/CategoryManagement';
 import { FournisseursManagement } from '../../components/FournisseursManagement';
 import { useUsers } from '../../hooks/useUsers';
-
+import { useHistoriqueStock } from '../../hooks/useHistoriqueStock';
+import { HistoriqueStock } from '../../types';
 import { TvaHistoryManagement } from '../../components/TvaHistoryManagement';
 
 export default function AdminPage() {
   const { users, createUser, deleteUser, updateUserStatus } = useUsers();
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'fournisseurs' | 'tva' | 'historique'>('users');
-
-  // Variables pour l'onglet historique
-  const [filteredHistorique] = useState([]);
-  const [selectedType] = useState('all');
-  const [startDate] = useState('');
-  const [endDate] = useState('');
-  const [historiquePerPage] = useState(10);
-  const [historiqueCurrentPage] = useState(1);
-  const [historiqueTotalPages] = useState(1);
-  const [historiqueIndexOfFirst] = useState(0);
-  const [historiqueIndexOfLast] = useState(10);
-  const [currentHistorique] = useState([]);
-  const [historiqueLoading] = useState(false);
-  const [historiqueError] = useState(null);
-
-  // Fonctions pour l'onglet historique
-  const handleTypeFilter = (value: string) => {};
-  const setStartDate = (value: string) => {};
-  const setEndDate = (value: string) => {};
-  const handleDateFilter = () => {};
-  const clearHistoriqueFilters = () => {};
-  const handleHistoriquePerPageChange = (value: number) => {};
-  const handleHistoriquePreviousPage = () => {};
-  const handleHistoriqueNextPage = () => {};
-  const handleHistoriquePageChange = (page: number) => {};
+  const [activeTab, setActiveTab] = useState<'users' | 'categories' | 'fournisseurs' | 'historique' | 'tva'>('users');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     type: 'user';
@@ -65,15 +41,25 @@ export default function AdminPage() {
     role: string;
   } | null>(null);
 
-
-
-
+  // État pour l'historique des stocks
+  const { historique, loading: historiqueLoading, error: historiqueError, getHistoriqueByType, getHistoriqueByDateRange } = useHistoriqueStock();
+  const [filteredHistorique, setFilteredHistorique] = useState<HistoriqueStock[]>([]);
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  
+  // État pour la pagination de l'historique des stocks
+  const [historiqueCurrentPage, setHistoriqueCurrentPage] = useState(1);
+  const [historiquePerPage, setHistoriquePerPage] = useState(20);
 
   // État pour la pagination des utilisateurs
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage, setUsersPerPage] = useState(10);
 
-
+  // Initialiser l'historique filtré
+  React.useEffect(() => {
+    setFilteredHistorique(historique);
+  }, [historique]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,9 +177,94 @@ export default function AdminPage() {
     setEditingUser(null);
   };
 
+  // Fonctions pour l'historique des stocks
+  const handleTypeFilter = async (type: string) => {
+    setSelectedType(type);
+    if (type === 'all') {
+      setFilteredHistorique(historique);
+    } else {
+      const result = await getHistoriqueByType(type as 'AJOUT' | 'VENTE' | 'RETRAIT_MANUEL' | 'SUPPRESSION');
+      if (result.success && result.data) {
+        setFilteredHistorique(result.data);
+      }
+    }
+  };
 
+  const handleDateFilter = async () => {
+    if (startDate && endDate) {
+      const result = await getHistoriqueByDateRange(startDate, endDate);
+      if (result.success && result.data) {
+        setFilteredHistorique(result.data);
+      }
+    } else {
+      setFilteredHistorique(historique);
+    }
+  };
 
+  // Fonctions de pagination pour l'historique des stocks
+  const historiqueTotalPages = Math.ceil(filteredHistorique.length / historiquePerPage);
+  const historiqueIndexOfLast = historiqueCurrentPage * historiquePerPage;
+  const historiqueIndexOfFirst = historiqueIndexOfLast - historiquePerPage;
+  const currentHistorique = filteredHistorique.slice(historiqueIndexOfFirst, historiqueIndexOfLast);
 
+  const handleHistoriquePageChange = (pageNumber: number) => {
+    setHistoriqueCurrentPage(pageNumber);
+    // Scroll vers le haut de la liste
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleHistoriquePreviousPage = () => {
+    if (historiqueCurrentPage > 1) {
+      setHistoriqueCurrentPage(historiqueCurrentPage - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleHistoriqueNextPage = () => {
+    if (historiqueCurrentPage < historiqueTotalPages) {
+      setHistoriqueCurrentPage(historiqueCurrentPage + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleHistoriquePerPageChange = (newHistoriquePerPage: number) => {
+    setHistoriquePerPage(newHistoriquePerPage);
+    setHistoriqueCurrentPage(1); // Retour à la première page
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Réinitialiser la pagination de l'historique quand le nombre de mouvements change
+  React.useEffect(() => {
+    if (historiqueCurrentPage > historiqueTotalPages && historiqueTotalPages > 0) {
+      setHistoriqueCurrentPage(historiqueTotalPages);
+    }
+  }, [filteredHistorique.length, historiqueCurrentPage, historiqueTotalPages]);
+
+  const clearHistoriqueFilters = () => {
+    setSelectedType('all');
+    setStartDate('');
+    setEndDate('');
+    setFilteredHistorique(historique);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('fr-FR');
+  };
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'AJOUT':
+        return 'bg-green-100 text-green-800';
+      case 'VENTE':
+        return 'bg-blue-100 text-blue-800';
+      case 'RETRAIT_MANUEL':
+        return 'bg-red-100 text-red-800';
+      case 'SUPPRESSION':
+        return 'bg-red-200 text-red-900';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   const getTabIcon = (tab: string) => {
     switch (tab) {
@@ -221,7 +292,12 @@ export default function AdminPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
         );
-
+      case 'historique':
+        return (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        );
       case 'tva':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -239,7 +315,7 @@ export default function AdminPage() {
       case 'roles': return 'Rôles';
       case 'categories': return 'Catégories';
       case 'fournisseurs': return 'Fournisseurs';
-
+      case 'historique': return 'Historique';
       case 'tva': return 'TVA';
       default: return tab;
     }
@@ -298,7 +374,7 @@ export default function AdminPage() {
           <div className="max-w-6xl mx-auto mb-8">
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
               <nav className="flex flex-wrap">
-                {(['users', 'categories', 'fournisseurs', 'tva'] as const).map((tab) => (
+                {(['users', 'categories', 'fournisseurs', 'historique', 'tva'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -636,7 +712,6 @@ export default function AdminPage() {
                   <FournisseursManagement />
                 </div>
               )}
-
 
               {activeTab === 'historique' && (
                 <div className="p-8 animate-fadeIn">

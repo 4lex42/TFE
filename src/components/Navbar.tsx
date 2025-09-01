@@ -62,12 +62,6 @@ export default function Navbar() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
         );
-      case '/admin/historique-stock':
-        return (
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        );
       case '/ventes':
         return (
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,7 +122,6 @@ export default function Navbar() {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: getNavIcon('/dashboard') },
     { href: '/stock', label: 'Stock', icon: getNavIcon('/stock') },
-    { href: '/admin/historique-stock', label: 'Historique Stock', icon: getNavIcon('/admin/historique-stock') },
     { href: '/stock/ajout', label: 'Ajouter Stock', icon: getNavIcon('/stock/ajout') },
     { href: '/ventes', label: 'Ventes', icon: getNavIcon('/ventes') },
     ...(userProfile?.role === 'admin' ? [{ href: '/admin', label: 'Admin', icon: getNavIcon('/admin') }] : [])
