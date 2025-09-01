@@ -329,7 +329,12 @@ export default function AjoutStockPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium text-gray-600">Catégorie:</span>
-                      <span className="text-sm text-gray-700">{selectedProductData.categorie}</span>
+                      <span className="text-sm text-gray-700">
+                        {selectedProductData.categories && selectedProductData.categories.length > 0 
+                          ? selectedProductData.categories.map(cat => cat.nom_categorie).join(', ')
+                          : 'Aucune catégorie'
+                        }
+                      </span>
                     </div>
                   </div>
                 </div>
